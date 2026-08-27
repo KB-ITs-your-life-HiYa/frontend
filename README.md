@@ -1,6 +1,7 @@
 # 🏠 frontend — 자립동행: D-1825 🏠
 
-2026 KB IT's Your Life 해커톤 출품작 **자립동행: D-1825**의 모바일 앱 프론트엔드입니다. '\n'
+2026 KB IT's Your Life 해커톤 출품작 **자립동행: D-1825**의 모바일 앱 프론트엔드입니다.
+
 React Native(Expo) + TypeScript로 작성되었으며, Expo Go 스토어 버전(SDK 54)에서 바로 실행됩니다.
 
 ## 시작하기
