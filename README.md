@@ -1,4 +1,4 @@
-# frontend — 자립동행: D-1825
+# frontend — 자립동행: D-1825 🏠
 
 2026 KB IT's Your Life 해커톤 출품작 **자립동행: D-1825**의 모바일 앱 프론트엔드입니다.
 React Native(Expo) + TypeScript로 작성되었으며, Expo Go 스토어 버전(SDK 54)에서 바로 실행됩니다.
@@ -45,7 +45,7 @@ assets/
 
 ## 디자인 시스템
 
-- 컬러 팔레트: `constants/colors.ts` (토스 블루 `#3182F6` 기본 + KB 옐로우 포인트)
+- 컬러 팔레트: `constants/colors.ts` (블루 `#3182F6` 기본 + KB 옐로우 포인트)
 - 공통 컴포넌트: `Card`, `Button`, `Badge`, `Chip`, `ListRow`, `ToggleRow`, `ProgressBar`, `StackedBar`,
   `CircularGauge`, `SectionHeader`, `ScreenHeader`
 - 아이콘: `@expo/vector-icons` (Ionicons / MaterialCommunityIcons)
