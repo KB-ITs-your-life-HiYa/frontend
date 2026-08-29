@@ -8,7 +8,7 @@ import ToggleRow from '../../components/ToggleRow';
 import CircularGauge from '../../components/CircularGauge';
 import { colors, spacing } from '../../constants/colors';
 
-// 온라인 케어 — 위험 신호 감지 대시보드 (마이 화면에서 진입)
+// 온라인 케어 — 위험 신호 감지 대시보드
 const timeline = [
   { id: '1', title: '주거지원금 수령 완료', meta: '오늘 오전 10:30', active: true },
   { id: '2', title: '자립 멘토 상담 예약', meta: '어제 오후 2:15' },
@@ -29,7 +29,7 @@ export default function CareScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader />
+      <ScreenHeader showBack showProfile={false} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Card style={styles.gaugeCard}>
           <Text style={styles.gaugeTitle}>이번 주 나의 안심 지수</Text>

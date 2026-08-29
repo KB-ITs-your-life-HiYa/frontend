@@ -1,13 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../../components/Button';
-import { colors, spacing } from '../../constants/colors';
+import { colors, radius, spacing } from '../../constants/colors';
 
-// 온보딩 첫 화면. 앱 최초 실행 시 노출 (네비게이션에는 아직 미연결 — 필요 시 RootNavigator에서 조건부 렌더링)
-export default function WelcomeScreen({ onStart }: { onStart?: () => void }) {
+// "시작하기"를 누르면 메인 탭으로 이동
+export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg }]}>
@@ -21,16 +22,10 @@ export default function WelcomeScreen({ onStart }: { onStart?: () => void }) {
       <Text style={styles.sub}>보호종료 이전부터 자립수당 종료 이후까지,{'\n'}끊기지 않는 재무 플랜</Text>
 
       <View style={styles.illustrationWrap}>
-        <View style={styles.ringOuter}>
-          <View style={styles.ringInner}>
-            <View style={styles.iconBubble}>
-              <Ionicons name="rocket" size={32} color={colors.primary} />
-            </View>
-          </View>
-        </View>
+        <Image source={require('../../../assets/mascots.png')} style={styles.mascot} resizeMode="contain" />
       </View>
 
-      <Button label="시작하기" onPress={onStart} />
+      <Button label="시작하기" onPress={() => navigation.replace('MainTabs' as never)} />
     </View>
   );
 }
@@ -42,34 +37,13 @@ const styles = StyleSheet.create({
   progressActive: { backgroundColor: colors.primary },
   title: { fontSize: 24, fontWeight: '800', color: colors.textPrimary, lineHeight: 32 },
   sub: { fontSize: 14, color: colors.textSecondary, marginTop: spacing.md, lineHeight: 20 },
-  illustrationWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  ringOuter: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: colors.primaryLight,
+  illustrationWrap: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    marginVertical: spacing.lg,
   },
-  ringInner: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(49,130,246,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBubble: {
-    width: 88,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
+  mascot: { width: '70%', height: '70%' },
 });

@@ -1,17 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
 import Button from '../../components/Button';
 import SectionHeader from '../../components/SectionHeader';
 import StackedBar from '../../components/StackedBar';
+import CircularGauge from '../../components/CircularGauge';
 import { colors, radius, spacing } from '../../constants/colors';
 
 // 홈 화면 — D-Day 생활비 관리 대시보드
-// 기획서 "1. D-Day 생활비 관리" 항목을 화면 단위로 구현:
-//   첫 목돈 배분 제안 / 소비 패턴 진단·절약 제안 / 월 생활비 배분 / D-365 대비 모드
+// 첫 목돈 배분 제안 / 소비 패턴 진단·절약 제안 / 월 생활비 배분 / D-365 대비 모드
 // TODO: 하드코딩된 값들을 services/api.ts 연동 후 서버 데이터로 교체
 const firstFund = [
   { label: '보증금', amount: 9_000_000, color: colors.primary },
@@ -25,6 +26,18 @@ const monthlyBudget = [
   { label: '여유분', amount: 140_000, color: colors.success },
 ];
 
+const monthlySummary = [
+  { id: '1', label: '이번 달 지출', value: '1,240,000원', iconBg: colors.dangerLight, iconColor: colors.danger, icon: 'trending-down' as const },
+  { id: '2', label: '월 평균 지출', value: '1,150,000원', iconBg: colors.graySoft, iconColor: colors.textSecondary, icon: 'stats-chart' as const },
+  { id: '3', label: '수입 대비 지출', value: '+360,000원', iconBg: colors.primaryLight, iconColor: colors.primary, icon: 'trending-up' as const },
+];
+
+const recentActivity = [
+  { id: '1', title: '주거지원금 수령 완료', meta: '오늘 오전 10:30', active: true },
+  { id: '2', title: '자립 멘토 상담 예약', meta: '어제 오후 2:15' },
+  { id: '3', title: '공과금 자동이체 설정', meta: '3일 전' },
+];
+
 const savingActions = [
   '외식비가 지난달보다 25% 늘었어요 — 월 15만원 절감을 목표로 해보세요.',
   '고정비 비중이 56%로 평균보다 높아요 — 통신비 요금제를 확인해보세요.',
@@ -32,11 +45,47 @@ const savingActions = [
 ];
 
 export default function HomeScreen() {
+  const navigation = useNavigation<any>();
+  const [showCareBanner, setShowCareBanner] = useState(true);
+
   return (
     <View style={styles.screen}>
       <ScreenHeader />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Badge label="자립수당 종료까지 D-1,647" icon="flag" />
+        {showCareBanner ? (
+          <Card style={styles.careBanner}>
+            <View style={styles.careBannerHeader}>
+              <View style={styles.careAvatar}>
+                <MaterialCommunityIcons name="robot-happy-outline" size={16} color={colors.white} />
+              </View>
+              <Text style={styles.careBannerName}>자립동행 AI</Text>
+              <Text style={styles.careBannerTime}>방금</Text>
+            </View>
+            <Text style={styles.careBannerText}>
+              이번 달 월세 납부가 아직 확인되지 않았어요. 상황에 변화가 있었나요?
+            </Text>
+            <View style={styles.careBannerActions}>
+              <Button
+                label="나중에 하기"
+                variant="secondary"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={() => setShowCareBanner(false)}
+              />
+              <Button
+                label="지금 확인하기"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={() => {
+                  setShowCareBanner(false);
+                  navigation.navigate('Chat' as never);
+                }}
+              />
+            </View>
+          </Card>
+        ) : null}
+
+        <Badge label="자립수당 종료까지 D-1,647" icon="flag" style={{ backgroundColor: '#FEBB00' }} />
 
         <Card style={styles.balanceCard}>
           <Text style={styles.label}>이번 달 잔액</Text>
@@ -49,7 +98,48 @@ export default function HomeScreen() {
             <Text style={styles.warningText}>지금 페이스라면 약 30개월 뒤 소진 예상</Text>
           </View>
         </Card>
-        <Button label="자세히 보기 →" onPress={() => {}} />
+        <Button
+          label="자세히 보기 →"
+          onPress={() => navigation.navigate('TopicDetail', { title: '안심 지수 산정 방식' })}
+        />
+
+        <Card style={styles.gaugeCard}>
+          <Text style={styles.gaugeTitle}>이번 주 나의 안심 지수</Text>
+          <Text style={styles.gaugeSubtitle}>현재 모든 금융 및 자립 활동이 안정적으로 관리되고 있습니다.</Text>
+          <View style={{ marginVertical: spacing.sm }}>
+            <Badge label="안정 상태" tone="primary" icon="checkmark-circle" />
+          </View>
+          <CircularGauge value={85} size={150} />
+        </Card>
+
+        <SectionHeader title="월간 요약" />
+        {monthlySummary.map((s) => (
+          <Card key={s.id} style={styles.summaryCard}>
+            <View>
+              <Text style={styles.summaryLabel}>{s.label}</Text>
+              <Text style={styles.summaryValue}>{s.value}</Text>
+            </View>
+            <View style={[styles.iconCircle, { backgroundColor: s.iconBg }]}>
+              <Ionicons name={s.icon} size={18} color={s.iconColor} />
+            </View>
+          </Card>
+        ))}
+
+        <SectionHeader title="최근 활동 내역" />
+        <Card style={styles.timelineCard}>
+          {recentActivity.map((item, index) => (
+            <View key={item.id} style={styles.timelineRow}>
+              <View style={styles.timelineMarkerCol}>
+                <View style={[styles.dot, item.active ? styles.dotActive : styles.dotInactive]} />
+                {index < recentActivity.length - 1 ? <View style={styles.line} /> : null}
+              </View>
+              <View style={styles.timelineTextCol}>
+                <Text style={styles.timelineTitle}>{item.title}</Text>
+                <Text style={styles.timelineMeta}>{item.meta}</Text>
+              </View>
+            </View>
+          ))}
+        </Card>
 
         {/* 첫 목돈(초기 지원금) 배분 제안 */}
         <SectionHeader title="첫 목돈 배분 제안" />
@@ -96,7 +186,11 @@ export default function HomeScreen() {
           </View>
         </Card>
 
-        <SectionHeader title="할 일 목록" actionLabel="모두 보기" />
+        <SectionHeader
+          title="할 일 목록"
+          actionLabel="모두 보기"
+          onActionPress={() => navigation.navigate('TodoList' as never)}
+        />
         <TodoCard
           ddayLabel="D-4"
           ddayTone="primary"
@@ -199,4 +293,33 @@ const styles = StyleSheet.create({
   todoCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   todoTextCol: { flex: 1, gap: 4 },
   todoTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  careBanner: { gap: 6, borderWidth: 1, borderColor: colors.primaryLight },
+  careBannerHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  careAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  careBannerName: { fontSize: 12, fontWeight: '700', color: colors.textPrimary },
+  careBannerTime: { fontSize: 11, color: colors.textTertiary, marginLeft: 'auto' },
+  careBannerText: { fontSize: 13, color: colors.textPrimary, lineHeight: 19 },
+  careBannerActions: { flexDirection: 'row', gap: spacing.sm, marginTop: 4 },
+  gaugeCard: { alignItems: 'center', paddingVertical: spacing.lg },
+  gaugeTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  gaugeSubtitle: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 6, paddingHorizontal: spacing.md },
+  summaryLabel: { fontSize: 13, color: colors.textSecondary },
+  summaryValue: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginTop: 4 },
+  timelineCard: { gap: 2 },
+  timelineRow: { flexDirection: 'row', gap: spacing.sm },
+  timelineMarkerCol: { alignItems: 'center', width: 14 },
+  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
+  dotActive: { backgroundColor: colors.primary },
+  dotInactive: { backgroundColor: colors.track },
+  line: { flex: 1, width: 1, backgroundColor: colors.border, marginVertical: 2 },
+  timelineTextCol: { flex: 1, paddingBottom: spacing.md },
+  timelineTitle: { fontSize: 14, color: colors.textPrimary, fontWeight: '600' },
+  timelineMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
 });

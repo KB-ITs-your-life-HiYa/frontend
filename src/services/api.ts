@@ -1,5 +1,5 @@
 // FastAPI 백엔드 연동용 클라이언트 자리.
-// 실제 배포/로컬 서버 주소가 정해지면 BASE_URL을 채워주세요.
+// 실제 배포/로컬 서버 주소가 정해지면 BASE_URL을 교체할 것
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

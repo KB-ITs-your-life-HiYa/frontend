@@ -11,37 +11,65 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
-import Chip from '../../components/Chip';
 import { colors, radius, spacing } from '../../constants/colors';
 import type { ChatMessage } from '../../types';
 
-// AI 상담 챗봇 화면 — 정부 지원금 매칭 안내, 온라인 케어 개입 대화 등에 사용
-// TODO: 전송 시 services/api.ts 를 통해 백엔드(FastAPI/Gemini) 응답으로 교체
+// AI 상담 챗봇 화면
+// 예시 시나리오: 온라인 케어(4. 온라인 케어 시스템)의 "이상징후 감지 시 AI 개입 대화" —
+// 월세 납부가 확인되지 않아 챗봇이 먼저 말을 거는 상황
+// TODO: 전송/응답을 services/api.ts 를 통해 백엔드(FastAPI/Gemini) 응답으로 교체
 const initialMessages: ChatMessage[] = [
-  { id: '1', role: 'assistant', content: '청년내일저축계좌를 아세요? 최근 3개월 근로소득이 있으신 것 같아요.', createdAt: '오전 10:23' },
-  { id: '2', role: 'user', content: '네, 알아보고 싶어요', createdAt: '오전 10:24' },
-  { id: '3', role: 'assistant', content: '그럼 대상이에요! 월 10만원씩 3년 저축하면 정부지원금 30만원이 함께 적립돼요.', createdAt: '오전 10:24' },
+  {
+    id: '1',
+    role: 'assistant',
+    content: '이번 달 월세 납부가 아직 확인되지 않았어요. 상황에 변화가 있었나요?',
+    createdAt: '오전 10:23',
+  },
 ];
+
+const QUICK_REPLIES = ['이미 납부했어요', '납부가 어려워요', '다음에 확인할게요'];
+
+function getFollowUp(reply: string): string {
+  switch (reply) {
+    case '이미 납부했어요':
+      return '확인해주셔서 감사해요! 납부 내역을 반영해서 안심 지수를 업데이트할게요.';
+    case '납부가 어려워요':
+      return '괜찮아요, 혼자 걱정하지 마세요. 주거비 지원 제도와 상담 연결을 도와드릴게요. 잠시 후 정책금융팀 담당자에게도 알림이 전달돼요.';
+    case '다음에 확인할게요':
+      return '알겠어요. 며칠 안에 다시 한번 여쭤볼게요. 언제든 먼저 말 걸어주셔도 좋아요.';
+    default:
+      return '네, 확인했어요. 도움이 더 필요하면 언제든 말씀해주세요.';
+  }
+}
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
+  const [repliesUsed, setRepliesUsed] = useState(false);
 
-  const handleSend = (text?: string) => {
-    const content = text ?? input;
-    if (!content.trim()) return;
-    setMessages((prev) => [
-      ...prev,
-      { id: String(Date.now()), role: 'user', content, createdAt: '방금' },
-    ]);
+  const appendMessage = (msg: Omit<ChatMessage, 'id'>) => {
+    setMessages((prev) => [...prev, { ...msg, id: String(Date.now() + Math.random()) }]);
+  };
+
+  const handleQuickReply = (reply: string) => {
+    setRepliesUsed(true);
+    appendMessage({ role: 'user', content: reply, createdAt: '방금' });
+    setTimeout(() => {
+      appendMessage({ role: 'assistant', content: getFollowUp(reply), createdAt: '방금' });
+    }, 400);
+  };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    appendMessage({ role: 'user', content: input, createdAt: '방금' });
     setInput('');
+    setTimeout(() => {
+      appendMessage({ role: 'assistant', content: getFollowUp(input), createdAt: '방금' });
+    }, 400);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScreenHeader />
       <FlatList
         data={messages}
@@ -54,7 +82,18 @@ export default function ChatScreen() {
             </View>
           </View>
         }
-        renderItem={({ item, index }) => (
+        ListFooterComponent={
+          !repliesUsed ? (
+            <View style={styles.quickReplyCol}>
+              {QUICK_REPLIES.map((reply) => (
+                <Pressable key={reply} style={styles.quickReplyRow} onPress={() => handleQuickReply(reply)}>
+                  <Text style={styles.quickReplyText}>{reply}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null
+        }
+        renderItem={({ item }) => (
           <View style={styles.messageBlock}>
             {item.role === 'assistant' ? (
               <View style={styles.botHeader}>
@@ -64,12 +103,7 @@ export default function ChatScreen() {
                 <Text style={styles.botName}>자립동행 AI</Text>
               </View>
             ) : null}
-            <View
-              style={[
-                styles.bubbleRow,
-                item.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowBot,
-              ]}
-            >
+            <View style={[styles.bubbleRow, item.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowBot]}>
               <View style={[styles.bubble, item.role === 'user' ? styles.bubbleUser : styles.bubbleBot]}>
                 <Text style={item.role === 'user' ? styles.textUser : styles.textBot}>{item.content}</Text>
               </View>
@@ -77,27 +111,9 @@ export default function ChatScreen() {
             <Text style={[styles.timestamp, item.role === 'user' ? styles.timestampRight : styles.timestampLeft]}>
               {item.createdAt}
             </Text>
-
-            {/* 마지막 봇 메시지 아래 추천 카드 예시 */}
-            {item.role === 'assistant' && index === messages.length - 1 ? (
-              <Pressable style={styles.recommendCard}>
-                <View style={styles.recommendTextCol}>
-                  <Text style={styles.recommendLabel}>추천 지원금</Text>
-                  <Text style={styles.recommendTitle}>자립정착금 신청 방법{'\n'}알아보기</Text>
-                </View>
-                <View style={styles.recommendArrow}>
-                  <Ionicons name="arrow-forward" size={18} color={colors.white} />
-                </View>
-              </Pressable>
-            ) : null}
           </View>
         )}
       />
-
-      <View style={styles.chipRow}>
-        <Chip label="자격 조건이 어떻게 되나요?" onPress={() => handleSend('자격 조건이 어떻게 되나요?')} />
-        <Chip label="다음에 할게요" onPress={() => handleSend('다음에 할게요')} />
-      </View>
 
       <View style={styles.inputRow}>
         <TextInput
@@ -106,9 +122,9 @@ export default function ChatScreen() {
           placeholderTextColor={colors.textTertiary}
           value={input}
           onChangeText={setInput}
-          onSubmitEditing={() => handleSend()}
+          onSubmitEditing={handleSend}
         />
-        <Pressable style={styles.sendButton} onPress={() => handleSend()}>
+        <Pressable style={styles.sendButton} onPress={handleSend}>
           <Ionicons name="send" size={16} color={colors.white} />
         </Pressable>
       </View>
@@ -118,7 +134,7 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  list: { padding: spacing.md, gap: 2 },
+  list: { padding: spacing.md, gap: 2, flexGrow: 1 },
   todayPillWrap: { alignItems: 'center', marginBottom: spacing.sm },
   todayPill: { backgroundColor: colors.graySoft, paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.full },
   todayText: { fontSize: 12, color: colors.textTertiary, fontWeight: '600' },
@@ -153,30 +169,14 @@ const styles = StyleSheet.create({
   timestamp: { fontSize: 11, color: colors.textTertiary, marginTop: 4 },
   timestampLeft: { textAlign: 'left', marginLeft: 2 },
   timestampRight: { textAlign: 'right', marginRight: 2 },
-  recommendCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.sm,
+  quickReplyCol: { gap: spacing.sm, marginTop: spacing.sm },
+  quickReplyRow: {
+    backgroundColor: colors.graySoft,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
   },
-  recommendTextCol: { flex: 1 },
-  recommendLabel: { fontSize: 12, fontWeight: '700', color: colors.primary, marginBottom: 4 },
-  recommendTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, lineHeight: 20 },
-  recommendArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.sm,
-  },
-  chipRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
+  quickReplyText: { fontSize: 14, fontWeight: '600', color: colors.primary },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',

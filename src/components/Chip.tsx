@@ -7,7 +7,7 @@ interface Props {
   onPress?: () => void;
 }
 
-// 챗봇 화면의 빠른 응답 버튼 (필 모양)
+// AI상담 화면의 빠른 응답 버튼
 export default function Chip({ label, onPress }: Props) {
   return (
     <Pressable style={styles.chip} onPress={onPress}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../constants/colors';
 
@@ -7,12 +7,13 @@ interface Props {
   label: string;
   tone?: 'accent' | 'primary' | 'success' | 'gray' | 'danger';
   icon?: keyof typeof Ionicons.glyphMap;
+  style?: ViewStyle;
 }
 
 // D-Day, 매칭률, 상태 표시 같은 짧은 강조 텍스트에 사용하는 뱃지
-export default function Badge({ label, tone = 'accent', icon }: Props) {
+export default function Badge({ label, tone = 'accent', icon, style }: Props) {
   return (
-    <View style={[styles.badge, styles[tone]]}>
+    <View style={[styles.badge, styles[tone], style]}>
       {icon ? <Ionicons name={icon} size={12} color={textColor[tone]} style={styles.icon} /> : null}
       <Text style={[styles.text, { color: textColor[tone] }]}>{label}</Text>
     </View>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
@@ -9,15 +10,15 @@ import ToggleRow from '../../components/ToggleRow';
 import { colors, spacing } from '../../constants/colors';
 
 // 마이 화면 — 프로필, 알림 설정, 고객지원
-// 상세 케어 대시보드는 screens/Care/CareScreen.tsx, 교육 콘텐츠는 screens/Education/EducationScreen.tsx 참고
-// (필요 시 이 화면에서 스택 네비게이션으로 연결하세요)
+// 온라인 케어 상세는 Care 화면으로 push (아래 '온라인 케어 자세히 보기')
 export default function MyPageScreen() {
+  const navigation = useNavigation();
   const [careConsent, setCareConsent] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="자립동행: D-1825" />
+      <ScreenHeader title="자립동행: D-1825" showBack showProfile={false} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Pressable>
           <Card style={styles.profileCard}>
@@ -35,6 +36,14 @@ export default function MyPageScreen() {
           <ListRow icon="person-outline" label="내 정보 관리" onPress={() => {}} />
           <View style={styles.divider} />
           <ListRow icon="business-outline" label="계좌 연결 관리" onPress={() => {}} />
+        </Card>
+
+        <Card style={styles.groupCard}>
+          <ListRow
+            icon="shield-checkmark-outline"
+            label="온라인 케어 자세히 보기"
+            onPress={() => navigation.navigate('Care' as never)}
+          />
         </Card>
 
         <Text style={styles.sectionLabel}>알림 설정</Text>

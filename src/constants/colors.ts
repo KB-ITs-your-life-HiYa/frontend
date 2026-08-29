@@ -1,4 +1,3 @@
-// 자립동행: D-1825 — 토스 스타일 컬러 팔레트
 export const colors = {
   // base
   white: '#FFFFFF',
@@ -12,9 +11,9 @@ export const colors = {
   textTertiary: '#8B95A1',
 
   // brand
-  primary: '#3182F6', // 토스 블루
+  primary: '#3182F6',
   primaryLight: '#E8F3FF',
-  accent: '#FFC107', // KB 옐로우 포인트
+  accent: '#FFC107',
   accentLight: '#FFF6D9',
 
   // status

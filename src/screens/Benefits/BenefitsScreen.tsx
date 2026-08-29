@@ -1,9 +1,11 @@
-import React from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
+import Button from '../../components/Button';
 import ProgressBar from '../../components/ProgressBar';
 import SectionHeader from '../../components/SectionHeader';
 import { colors, radius, spacing } from '../../constants/colors';
@@ -70,15 +72,32 @@ const recommended: BenefitItem[] = [
   },
 ];
 
+const CATEGORIES = Array.from(new Set(recommended.map((item) => item.category)));
+
 export default function BenefitsScreen() {
+  const navigation = useNavigation<any>();
+  const [activeCategories, setActiveCategories] = useState<string[]>(CATEGORIES);
+  const [filterVisible, setFilterVisible] = useState(false);
+
+  const toggleCategory = (cat: string) => {
+    setActiveCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
+  };
+
+  const filtered = recommended.filter((item) => activeCategories.includes(item.category));
+
   return (
     <View style={styles.screen}>
       <ScreenHeader />
       <FlatList
         style={styles.container}
         contentContainerStyle={styles.content}
-        data={recommended}
+        data={filtered}
         keyExtractor={(item) => item.id}
+        ListEmptyComponent={
+          <Card style={styles.emptyCard}>
+            <Text style={styles.emptyText}>선택한 카테고리에 해당하는 지원 정책이 없어요</Text>
+          </Card>
+        }
         ListHeaderComponent={
           <>
             <Text style={styles.heroTitle}>동행님께 딱 맞는 지원금을 찾았어요</Text>
@@ -116,7 +135,14 @@ export default function BenefitsScreen() {
 
             <View style={styles.sectionHeaderRow}>
               <SectionHeader title="추천 지원 정책" />
-              <Ionicons name="options-outline" size={20} color={colors.textSecondary} style={styles.filterIcon} />
+              <Pressable
+                onPress={() => setFilterVisible(true)}
+                hitSlop={8}
+                style={styles.filterIcon}
+                accessibilityLabel="필터 설정"
+              >
+                <Ionicons name="options-outline" size={20} color={colors.textSecondary} />
+              </Pressable>
             </View>
           </>
         }
@@ -143,11 +169,41 @@ export default function BenefitsScreen() {
 
             <View style={styles.cardFooter}>
               <Text style={[styles.cardPeriod, item.urgent ? styles.cardPeriodUrgent : null]}>{item.period}</Text>
-              <Text style={styles.cardDetail}>상세보기→</Text>
+              <Pressable onPress={() => navigation.navigate('TopicDetail', { title: item.title })}>
+                <Text style={styles.cardDetail}>상세보기→</Text>
+              </Pressable>
             </View>
           </Card>
         )}
       />
+
+      <Modal visible={filterVisible} transparent animationType="fade" onRequestClose={() => setFilterVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setFilterVisible(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>카테고리 필터</Text>
+            <Text style={styles.modalSubtitle}>보고 싶은 지원 정책 카테고리를 선택하세요</Text>
+            <View style={styles.filterChipRow}>
+              {CATEGORIES.map((cat) => {
+                const active = activeCategories.includes(cat);
+                return (
+                  <Pressable
+                    key={cat}
+                    onPress={() => toggleCategory(cat)}
+                    style={[styles.filterChip, active ? styles.filterChipActive : null]}
+                  >
+                    {active ? <Ionicons name="checkmark" size={13} color={colors.white} style={{ marginRight: 4 }} /> : null}
+                    <Text style={[styles.filterChipText, active ? styles.filterChipTextActive : null]}>{cat}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={styles.modalActionsRow}>
+              <Button label="초기화" variant="secondary" style={{ flex: 1 }} onPress={() => setActiveCategories(CATEGORIES)} />
+              <Button label="적용하기" style={{ flex: 1 }} onPress={() => setFilterVisible(false)} />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -208,4 +264,35 @@ const styles = StyleSheet.create({
   cardPeriod: { fontSize: 12, color: colors.textTertiary },
   cardPeriodUrgent: { color: colors.danger, fontWeight: '700' },
   cardDetail: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+  emptyCard: { alignItems: 'center', paddingVertical: spacing.lg },
+  emptyText: { fontSize: 13, color: colors.textTertiary },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.textPrimary },
+  modalSubtitle: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.sm },
+  filterChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  filterChipTextActive: { color: colors.white },
+  modalActionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
 });
