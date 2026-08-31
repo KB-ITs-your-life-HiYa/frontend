@@ -23,7 +23,7 @@ src/
   screens/        # 화면 단위 컴포넌트. 기능별 폴더로 분리
   components/     # 여러 화면에서 재사용하는 UI 조각
   constants/      # colors.ts — 토스 스타일 컬러 / 여백 / 라운드 값
-  services/       # api.ts(FastAPI 백엔드), supabase.ts(Supabase) 연동 자리
+  services/       # api.ts(Spring Boot 백엔드), supabase.ts(Supabase) 연동 자리
   types/          # 공통 타입 정의
   hooks/          # 커스텀 훅 (아직 비어있음)
 assets/
@@ -53,6 +53,6 @@ assets/
 ## 다음에 할 일
 
 - [ ] `services/supabase.ts`에 실제 프로젝트 URL/키 채우기 (`npm install @supabase/supabase-js` 필요)
-- [ ] `services/api.ts`의 `BASE_URL`을 실제 FastAPI 서버 주소로 교체
+- [ ] `services/api.ts`의 `BASE_URL`을 실제 배포 서버 주소로 교체 (로컬은 8080 기본값)
 - [ ] 화면 안의 하드코딩된 데이터를 서버 응답으로 교체
 - [ ] 챗봇 대화를 실제 AI 백엔드 응답으로 연결

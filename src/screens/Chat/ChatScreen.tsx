@@ -17,7 +17,7 @@ import type { ChatMessage } from '../../types';
 // AI 상담 챗봇 화면
 // 예시 시나리오: 온라인 케어(4. 온라인 케어 시스템)의 "이상징후 감지 시 AI 개입 대화" —
 // 월세 납부가 확인되지 않아 챗봇이 먼저 말을 거는 상황
-// TODO: 전송/응답을 services/api.ts 를 통해 백엔드(FastAPI/Gemini) 응답으로 교체
+// TODO: 전송/응답을 services/api.ts 를 통해 백엔드(Spring Boot/Gemini) 응답으로 교체
 const initialMessages: ChatMessage[] = [
   {
     id: '1',
