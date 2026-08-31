@@ -36,6 +36,13 @@ yarn-error.*
 .env.*
 !.env.example
 
+# IDE
+#   IntelliJ / WebStorm 은 열기만 해도 .idea/ 를 만든다.
+#   workspace.xml 에 열어둔 파일·창 배치 같은 개인 설정이 들어가므로 커밋하지 않는다.
+.idea/
+*.iml
+.vscode/
+
 # typescript
 *.tsbuildinfo
 
