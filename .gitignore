@@ -31,7 +31,10 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+#   .env.example 만 커밋한다. 실제 키가 든 .env 는 절대 올리지 말 것.
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
