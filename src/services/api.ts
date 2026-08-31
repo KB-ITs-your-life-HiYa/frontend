@@ -1,6 +1,6 @@
-// FastAPI 백엔드 연동용 클라이언트 자리.
-// 실제 배포/로컬 서버 주소가 정해지면 BASE_URL을 교체할 것
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
+// Spring Boot 백엔드 연동용 클라이언트.
+// 로컬 기본 포트는 8080. 다른 주소를 쓰려면 .env 의 EXPO_PUBLIC_API_BASE_URL 로 덮어쓴다.
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
