@@ -31,3 +31,22 @@ export interface ChatMessage {
   content: string;
   createdAt: string;
 }
+
+/** 자격 단계. 백엔드 EligibilityTier 와 같은 값 */
+export type EligibilityTier = 'SELF_RELIANCE' | 'YOUTH' | 'GENERAL';
+
+/** GET /members/me 응답. 로그인 응답 안의 member 와 같은 모양 */
+export interface Member {
+  memberId: number;
+  email: string;
+  age: number;
+  tier: EligibilityTier;
+  tierLabel: string;
+  daysUntilSupportEnd: number | null;
+}
+
+/** POST /auth/login 응답 */
+export interface LoginResponse {
+  token: string;
+  member: Member;
+}

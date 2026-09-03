@@ -1,3 +1,5 @@
+import { clearToken, loadToken } from './auth';
+
 // Spring Boot 백엔드 연동용 클라이언트.
 // 로컬 기본 포트는 8080. 다른 주소를 쓰려면 .env 의 EXPO_PUBLIC_API_BASE_URL 로 덮어쓴다.
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -29,9 +31,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = await loadToken();
+
   const res = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      // 토큰이 없으면 헤더 자체를 넣지 않는다. 로그인 요청이 그런 경우다
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
   });
 
   // 서버가 죽었거나 프록시가 HTML 을 돌려주면 JSON 파싱이 실패한다
@@ -43,10 +52,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!res.ok || !body?.success) {
+    // 토큰이 만료되었거나 위조된 경우. 들고 있어봐야 계속 실패하므로 지운다
+    if (res.status === 401) {
+      await clearToken();
+    }
     throw new ApiError(
-      body?.error?.code ?? 'UNKNOWN',
-      body?.error?.message ?? `요청에 실패했습니다 (HTTP ${res.status})`,
-      res.status
+        body?.error?.code ?? 'UNKNOWN',
+        body?.error?.message ?? `요청에 실패했습니다 (HTTP ${res.status})`,
+        res.status
     );
   }
 

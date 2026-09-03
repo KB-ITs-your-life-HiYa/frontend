@@ -16,14 +16,15 @@ React Navigation 7 (Stack + Bottom Tabs)
 
 ```
 src/
-├── navigation/    RootNavigator — Stack(Onboarding → MainTabs → MyPage / Care)
+├── navigation/    RootNavigator — 로그인 여부로 화면 목록이 갈린다
 ├── screens/       화면 단위 컴포넌트. 기능별 폴더
 ├── components/    여러 화면에서 재사용하는 UI 조각
+├── contexts/      AuthContext — 앱 전체가 공유하는 상태
 ├── constants/     colors.ts — 컬러 · 여백 · 라운드 값
-├── services/      api.ts (백엔드), supabase.ts
+├── services/      api.ts (백엔드), auth.ts (토큰 저장소), supabase.ts
 ├── types/         공통 타입
 ├── hooks/         커스텀 훅
-└── utils/
+└── utils/         confirm.ts 등
 ```
 
 - 화면은 `screens/<기능>/XxxScreen.tsx`
@@ -48,6 +49,37 @@ const notice = await api.get<HousingNotice>('/housing/12')
 
 백엔드 응답은 `{ success, data, error }` 로 감싸여 온다.
 **벗기는 일은 `api.ts` 안에서만 한다** — 화면에서 `.data` 를 꺼내지 않는다.
+
+---
+
+## 인증
+
+**토큰을 직접 다루지 않는다.** `api.ts` 가 요청마다 `Authorization` 헤더를 붙이고,
+401 이 오면 저장된 토큰을 지운다. 화면은 토큰의 존재를 몰라도 된다.
+
+로그인한 회원 정보가 필요하면 `useAuth()` 를 쓴다.
+
+```tsx
+const { member, login, logout } = useAuth()
+```
+
+**로그인·로그아웃 후 화면을 직접 이동시키지 않는다.** `member` 가 바뀌면
+`RootNavigator` 가 화면 목록을 통째로 갈아끼운다.
+`navigate` 로 옮기면 뒤로가기로 로그인 화면에 돌아가는 문제가 생긴다.
+
+`member.daysUntilSupportEnd` 는 **보호중인 회원에게 `null`** 이다. D-day 를 그릴 수
+없는 경우를 화면이 처리해야 한다.
+
+### 확인 대화상자
+
+**`Alert.alert` 을 직접 쓰지 않는다.** react-native-web 은 버튼이 있는 Alert 을
+구현하지 않아 **웹에서 아무 일도 일어나지 않는다**(에러도 나지 않는다).
+
+```ts
+import { confirm } from '../../utils/confirm'
+
+if (await confirm('로그아웃', '로그아웃하시겠어요?', '로그아웃')) { ... }
+```
 
 ---
 
@@ -148,4 +180,4 @@ git switch -c feature/housing-calendar
 
 ---
 
-_최종 갱신: 2026-08-31_
+_최종 갱신: 2026-09-03_
