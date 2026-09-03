@@ -8,6 +8,8 @@ import Badge from '../../components/Badge';
 import ListRow from '../../components/ListRow';
 import ToggleRow from '../../components/ToggleRow';
 import { colors, spacing } from '../../constants/colors';
+import { useAuth } from '../../contexts/AuthContext';
+import { confirm } from '../../utils/confirm';
 
 // 마이 화면 — 프로필, 알림 설정, 고객지원
 // 온라인 케어 상세는 Care 화면으로 push (아래 '온라인 케어 자세히 보기')
@@ -16,18 +18,31 @@ export default function MyPageScreen() {
   const [careConsent, setCareConsent] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
 
+  const { member, logout } = useAuth();
+
+  async function handleLogout() {
+    if (await confirm('로그아웃', '로그아웃하시겠어요?', '로그아웃')) {
+      await logout();
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <ScreenHeader title="자립동행: D-1825" showBack showProfile={false} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Pressable>
           <Card style={styles.profileCard}>
-            <View>
-              <Text style={styles.name}>김동행</Text>
+              <Text style={styles.name}>{member?.email ?? '-'}</Text>
               <View style={{ marginTop: 8 }}>
-                <Badge label="자립수당 종료까지 D-1,647" tone="primary" />
+                <Badge
+                    label={
+                      member?.daysUntilSupportEnd != null
+                          ? `자립수당 종료까지 D-${member.daysUntilSupportEnd.toLocaleString()}`
+                          : member?.tierLabel ?? '-'
+                    }
+                    tone="primary"
+                />
               </View>
-            </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           </Card>
         </Pressable>
@@ -67,6 +82,11 @@ export default function MyPageScreen() {
           <View style={styles.divider} />
           <ListRow label="앱 버전" value="v1.2.0" showChevron={false} />
         </Card>
+
+        <Card style={styles.groupCard}>
+          <ListRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
+        </Card>
+
       </ScrollView>
     </View>
   );

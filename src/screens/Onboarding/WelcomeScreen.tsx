@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../../components/Button';
 import { colors, radius, spacing } from '../../constants/colors';
 
-// "시작하기"를 누르면 메인 탭으로 이동
+// "시작하기"를 누르면 로그인 화면으로. 로그인 후에는 네비게이터가 홈으로 바꾼다
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -25,7 +25,7 @@ export default function WelcomeScreen() {
         <Image source={require('../../../assets/mascots.png')} style={styles.mascot} resizeMode="contain" />
       </View>
 
-      <Button label="시작하기" onPress={() => navigation.replace('MainTabs' as never)} />
+      <Button label="시작하기" onPress={() => navigation.replace('Login' as never)} />
     </View>
   );
 }

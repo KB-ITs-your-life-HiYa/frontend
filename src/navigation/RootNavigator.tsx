@@ -17,6 +17,10 @@ import TopicDetailScreen from '../screens/Play/TopicDetailScreen';
 import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
 import CareScreen from '../screens/Care/CareScreen';
 
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import LoginScreen from '../screens/Auth/LoginScreen';
+
 export type RootTabParamList = {
   Home: undefined;
   Chat: undefined;
@@ -27,6 +31,7 @@ export type RootTabParamList = {
 
 export type RootStackParamList = {
   Onboarding: undefined;
+  Login: undefined;
   MainTabs: undefined;
   MyPage: undefined;
   Care: undefined;
@@ -79,17 +84,36 @@ function MainTabs() {
 }
 
 export default function RootNavigator() {
+  const { loading, member } = useAuth();
+
+  // 저장된 토큰을 확인하는 동안. 이게 없으면 로그인한 사람에게도 로그인 화면이 깜빡한다
+  if (loading) {
+    return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white }}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+    );
+  }
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Onboarding" component={WelcomeScreen} />
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="MyPage" component={MyPageScreen} />
-        <Stack.Screen name="Care" component={CareScreen} />
-        <Stack.Screen name="TodoList" component={TodoListScreen} />
-        <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
-        <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {member ? (
+              <>
+                <Stack.Screen name="MainTabs" component={MainTabs} />
+                <Stack.Screen name="MyPage" component={MyPageScreen} />
+                <Stack.Screen name="Care" component={CareScreen} />
+                <Stack.Screen name="TodoList" component={TodoListScreen} />
+                <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
+                <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />
+              </>
+          ) : (
+              <>
+                <Stack.Screen name="Onboarding" component={WelcomeScreen} />
+                <Stack.Screen name="Login" component={LoginScreen} />
+              </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
   );
 }
