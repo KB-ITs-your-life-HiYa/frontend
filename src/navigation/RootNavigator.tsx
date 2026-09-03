@@ -23,7 +23,7 @@ import LoginScreen from '../screens/Auth/LoginScreen';
 
 export type RootTabParamList = {
   Home: undefined;
-  Chat: undefined;
+  Chat: { signalId?: number } | undefined;
   Benefits: undefined;
   Housing: undefined;
   Play: undefined;
