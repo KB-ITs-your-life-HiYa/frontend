@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, View , Text } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
+import CareBanner from './CareBanner';
 import Badge from '../../components/Badge';
 import Button from '../../components/Button';
 import SectionHeader from '../../components/SectionHeader';
@@ -46,45 +47,12 @@ const savingActions = [
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
-  const [showCareBanner, setShowCareBanner] = useState(true);
 
   return (
     <View style={styles.screen}>
       <ScreenHeader />
+      <CareBanner />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {showCareBanner ? (
-          <Card style={styles.careBanner}>
-            <View style={styles.careBannerHeader}>
-              <View style={styles.careAvatar}>
-                <MaterialCommunityIcons name="robot-happy-outline" size={16} color={colors.white} />
-              </View>
-              <Text style={styles.careBannerName}>자립동행 AI</Text>
-              <Text style={styles.careBannerTime}>방금</Text>
-            </View>
-            <Text style={styles.careBannerText}>
-              이번 달 월세 납부가 아직 확인되지 않았어요. 상황에 변화가 있었나요?
-            </Text>
-            <View style={styles.careBannerActions}>
-              <Button
-                label="나중에 하기"
-                variant="secondary"
-                size="sm"
-                style={{ flex: 1 }}
-                onPress={() => setShowCareBanner(false)}
-              />
-              <Button
-                label="지금 확인하기"
-                size="sm"
-                style={{ flex: 1 }}
-                onPress={() => {
-                  setShowCareBanner(false);
-                  navigation.navigate('Chat' as never);
-                }}
-              />
-            </View>
-          </Card>
-        ) : null}
-
         <Badge label="자립수당 종료까지 D-1,647" icon="flag" style={{ backgroundColor: '#FEBB00' }} />
 
         <Card style={styles.balanceCard}>
