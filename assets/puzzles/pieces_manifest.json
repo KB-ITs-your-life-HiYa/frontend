@@ -1,0 +1,151 @@
+{
+  "canvasSize": 1248,
+  "rows": 4,
+  "cols": 4,
+  "pieces": [
+    {
+      "index": 0,
+      "row": 0,
+      "col": 0,
+      "x": 0,
+      "y": 0,
+      "width": 314,
+      "height": 314
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "col": 1,
+      "x": 222,
+      "y": 0,
+      "width": 404,
+      "height": 314
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "col": 2,
+      "x": 534,
+      "y": 0,
+      "width": 404,
+      "height": 402
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "col": 3,
+      "x": 846,
+      "y": 0,
+      "width": 402,
+      "height": 314
+    },
+    {
+      "index": 4,
+      "row": 1,
+      "col": 0,
+      "x": 0,
+      "y": 222,
+      "width": 314,
+      "height": 404
+    },
+    {
+      "index": 5,
+      "row": 1,
+      "col": 1,
+      "x": 222,
+      "y": 222,
+      "width": 492,
+      "height": 404
+    },
+    {
+      "index": 6,
+      "row": 1,
+      "col": 2,
+      "x": 622,
+      "y": 310,
+      "width": 316,
+      "height": 316
+    },
+    {
+      "index": 7,
+      "row": 1,
+      "col": 3,
+      "x": 846,
+      "y": 222,
+      "width": 402,
+      "height": 404
+    },
+    {
+      "index": 8,
+      "row": 2,
+      "col": 0,
+      "x": 0,
+      "y": 534,
+      "width": 402,
+      "height": 492
+    },
+    {
+      "index": 9,
+      "row": 2,
+      "col": 1,
+      "x": 310,
+      "y": 534,
+      "width": 404,
+      "height": 404
+    },
+    {
+      "index": 10,
+      "row": 2,
+      "col": 2,
+      "x": 622,
+      "y": 534,
+      "width": 316,
+      "height": 404
+    },
+    {
+      "index": 11,
+      "row": 2,
+      "col": 3,
+      "x": 846,
+      "y": 534,
+      "width": 402,
+      "height": 404
+    },
+    {
+      "index": 12,
+      "row": 3,
+      "col": 0,
+      "x": 0,
+      "y": 934,
+      "width": 314,
+      "height": 314
+    },
+    {
+      "index": 13,
+      "row": 3,
+      "col": 1,
+      "x": 222,
+      "y": 846,
+      "width": 492,
+      "height": 402
+    },
+    {
+      "index": 14,
+      "row": 3,
+      "col": 2,
+      "x": 622,
+      "y": 846,
+      "width": 404,
+      "height": 402
+    },
+    {
+      "index": 15,
+      "row": 3,
+      "col": 3,
+      "x": 934,
+      "y": 846,
+      "width": 314,
+      "height": 402
+    }
+  ]
+}
