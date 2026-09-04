@@ -53,32 +53,31 @@ export default function AccountListScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title={TITLES[type]} showBack showProfile={false} />
+      <ScreenHeader title={TITLES[type]} showBack showProfile={false} flat extraTopPadding={14} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {loading ? (
           <ActivityIndicator color={colors.primary} style={styles.status} />
         ) : error || !data ? (
           <Text style={styles.error}>{error ?? '계좌 정보를 불러오지 못했습니다'}</Text>
         ) : (
-          <>
+          <Card style={styles.listCard}>
             <View style={styles.summaryBlock}>
               <Text style={styles.sumLabel}>{SUM_LABELS[type]}</Text>
               <MoneyText amount={data.totalBalance} variant="large" />
             </View>
+            <View style={styles.divider} />
 
-            <Card style={styles.listCard}>
-              {data.accounts.length === 0 ? (
-                <Text style={styles.empty}>등록된 계좌가 없어요</Text>
-              ) : (
-                data.accounts.map((account, index) => (
-                  <React.Fragment key={`${account.bankName}-${index}`}>
-                    <AccountRow account={account} />
-                    {index < data.accounts.length - 1 ? <View style={styles.divider} /> : null}
-                  </React.Fragment>
-                ))
-              )}
-            </Card>
-          </>
+            {data.accounts.length === 0 ? (
+              <Text style={styles.empty}>등록된 계좌가 없어요</Text>
+            ) : (
+              data.accounts.map((account, index) => (
+                <React.Fragment key={`${account.bankName}-${index}`}>
+                  <AccountRow account={account} />
+                  {index < data.accounts.length - 1 ? <View style={styles.divider} /> : null}
+                </React.Fragment>
+              ))
+            )}
+          </Card>
         )}
       </ScrollView>
     </View>
@@ -109,9 +108,9 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xl },
   status: { marginTop: spacing.xl },
   error: { fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: spacing.xl },
-  summaryBlock: { gap: 4 },
+  summaryBlock: { gap: 4, paddingVertical: 10 },
   sumLabel: { fontSize: 13, color: colors.textSecondary },
-  listCard: { paddingVertical: spacing.sm, marginTop: spacing.sm },
+  listCard: { paddingVertical: spacing.sm },
   empty: { fontSize: 13, color: colors.textTertiary, textAlign: 'center', paddingVertical: spacing.lg },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
