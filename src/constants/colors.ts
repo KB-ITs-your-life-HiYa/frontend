@@ -29,6 +29,14 @@ export const colors = {
   yellowSoft: '#FDEFD3',
   greenSoft: '#E3F7EE',
   graySoft: '#EEF0F3',
+
+  // 대화 화면: 기존 시연 디자인
+  chatBackground: '#F7F8FA',
+  chatAccent: '#005EB8',
+  chatAvatar: '#1078EE',
+  chatInputBorder: '#BDC7DA',
+  chatShadow: '#000000',
+  notificationBackdrop: 'rgba(25, 31, 40, 0.24)',
 } as const;
 
 export const radius = {

@@ -1,206 +1,177 @@
-import React, { useState } from 'react';
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View , Text, TextInput } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { PolicyCards, ReferralOffer } from './CareFollowUp';
+import ScheduleChangeForm from './ScheduleChangeForm';
 import ScreenHeader from '../../components/ScreenHeader';
 import { colors, radius, spacing } from '../../constants/colors';
-import type { ChatMessage } from '../../types';
+import { useCare } from '../../hooks/useCare';
+import { careApi } from '../../services/care';
+import type { CareButtonRequest, CareChoice } from '../../types/care';
 
-// AI 상담 챗봇 화면
-// 예시 시나리오: 온라인 케어(4. 온라인 케어 시스템)의 "이상징후 감지 시 AI 개입 대화" —
-// 월세 납부가 확인되지 않아 챗봇이 먼저 말을 거는 상황
-// TODO: 전송/응답을 services/api.ts 를 통해 백엔드(Spring Boot/Gemini) 응답으로 교체
-const initialMessages: ChatMessage[] = [
-  {
-    id: '1',
-    role: 'assistant',
-    content: '이번 달 월세 납부가 아직 확인되지 않았어요. 상황에 변화가 있었나요?',
-    createdAt: '오전 10:23',
-  },
-];
+function formatTime(value: string) {
+  return new Date(value).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
+}
 
-const QUICK_REPLIES = ['이미 납부했어요', '납부가 어려워요', '다음에 확인할게요'];
-
-function getFollowUp(reply: string): string {
-  switch (reply) {
-    case '이미 납부했어요':
-      return '확인해주셔서 감사해요! 납부 내역을 반영해서 안심 지수를 업데이트할게요.';
-    case '납부가 어려워요':
-      return '괜찮아요, 혼자 걱정하지 마세요. 주거비 지원 제도와 상담 연결을 도와드릴게요. 잠시 후 정책금융팀 담당자에게도 알림이 전달돼요.';
-    case '다음에 확인할게요':
-      return '알겠어요. 며칠 안에 다시 한번 여쭤볼게요. 언제든 먼저 말 걸어주셔도 좋아요.';
-    default:
-      return '네, 확인했어요. 도움이 더 필요하면 언제든 말씀해주세요.';
-  }
+function Message({ text, time, user = false }: { text: string; time?: string; user?: boolean }) {
+  return <View style={[styles.messageRow, user && styles.messageRowUser]}>
+    {!user && <View style={styles.avatar}>
+      <MaterialCommunityIcons name="robot" size={24} color={colors.chatAccent} />
+    </View>}
+    <View style={[styles.messageColumn, user && styles.messageColumnUser]}>
+      {!user && <Text style={styles.botName}>자립동행 AI</Text>}
+      <View style={[styles.bubble, user ? styles.bubbleUser : styles.bubbleBot]}>
+        <Text style={user ? styles.textUser : styles.textBot}>{text}</Text>
+      </View>
+      {time && <Text style={[styles.timestamp, user && styles.timestampRight]}>{formatTime(time)}</Text>}
+    </View>
+  </View>;
 }
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState(initialMessages);
-  const [input, setInput] = useState('');
-  const [repliesUsed, setRepliesUsed] = useState(false);
+  const { summary, busy, error, run, refresh } = useCare();
+  const [editingSignal, setEditingSignal] = useState<number | null>(null);
+  const [declined, setDeclined] = useState<number[]>([]);
+  const policyAttempts = useRef(new Set<number>());
+  useFocusEffect(useCallback(() => {
+    setDeclined([]);
+    policyAttempts.current.clear();
+  }, []));
+  const retry = useRef<{ key: string; request: CareButtonRequest } | null>(null);
+  const scroll = useRef<ScrollView>(null);
+  const signals = summary?.signals ?? [];
+  const signal = signals[signals.length - 1];
+  const options = signal && !busy && signal.replies.length === 0 && editingSignal !== signal.id ? signal.options : [];
+  const editing = signal && editingSignal === signal.id && signal.status === 'OPEN' && signal.replies.length === 0;
 
-  const appendMessage = (msg: Omit<ChatMessage, 'id'>) => {
-    setMessages((prev) => [...prev, { ...msg, id: String(Date.now() + Math.random()) }]);
-  };
+  const offerSignal = signal?.referralEligible && (signal.recheckedAt || signal.replies.some(r => r.choice === 'DIFFICULT'))
+    ? signal : [...signals].reverse().find(s => s.referralEligible && s.recheckedAt);
 
-  const handleQuickReply = (reply: string) => {
-    setRepliesUsed(true);
-    appendMessage({ role: 'user', content: reply, createdAt: '방금' });
-    setTimeout(() => {
-      appendMessage({ role: 'assistant', content: getFollowUp(reply), createdAt: '방금' });
-    }, 400);
-  };
+  // 저장 직후 또는 재진입 시 미완료 정책 조회만 이어간다. 오류는 명시적인 재시도로 처리한다.
+  useEffect(() => {
+    if (busy || !summary) return;
+    for (const conversation of summary.signals) {
+      const response = conversation.replies.find(r => r.policies?.status === 'PENDING' && !policyAttempts.current.has(r.id));
+      if (response) {
+        policyAttempts.current.add(response.id);
+        void run(() => careApi.policies(conversation.id, response.id));
+        break;
+      }
+    }
+  }, [summary, busy, run]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    appendMessage({ role: 'user', content: input, createdAt: '방금' });
-    setInput('');
-    setTimeout(() => {
-      appendMessage({ role: 'assistant', content: getFollowUp(input), createdAt: '방금' });
-    }, 400);
-  };
+  async function send(choice: CareChoice, change: Pick<CareButtonRequest, 'expectedDay' | 'expectedAmount'> = {}) {
+    if (!signal || busy) return;
+    if (choice === 'CHANGED' && change.expectedDay === undefined && change.expectedAmount === undefined) {
+      setEditingSignal(signal.id);
+      return;
+    }
+    const key = `${signal.id}:${choice}:${change.expectedDay ?? ''}:${change.expectedAmount ?? ''}`;
+    if (retry.current?.key !== key) retry.current = {
+      key, request: { choice, ...change, requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}` },
+    };
+    const request = retry.current.request;
+    if (await run(() => careApi.respond(signal.id, request))) {
+      retry.current = null;
+      setEditingSignal(null);
+    }
+  }
 
-  return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScreenHeader />
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          <View style={styles.todayPillWrap}>
-            <View style={styles.todayPill}>
-              <Text style={styles.todayText}>오늘</Text>
-            </View>
-          </View>
-        }
-        ListFooterComponent={
-          !repliesUsed ? (
-            <View style={styles.quickReplyCol}>
-              {QUICK_REPLIES.map((reply) => (
-                <Pressable key={reply} style={styles.quickReplyRow} onPress={() => handleQuickReply(reply)}>
-                  <Text style={styles.quickReplyText}>{reply}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <View style={styles.messageBlock}>
-            {item.role === 'assistant' ? (
-              <View style={styles.botHeader}>
-                <View style={styles.avatar}>
-                  <MaterialCommunityIcons name="home-city" size={16} color={colors.white} />
-                </View>
-                <Text style={styles.botName}>자립동행 AI</Text>
-              </View>
-            ) : null}
-            <View style={[styles.bubbleRow, item.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowBot]}>
-              <View style={[styles.bubble, item.role === 'user' ? styles.bubbleUser : styles.bubbleBot]}>
-                <Text style={item.role === 'user' ? styles.textUser : styles.textBot}>{item.content}</Text>
-              </View>
-            </View>
-            <Text style={[styles.timestamp, item.role === 'user' ? styles.timestampRight : styles.timestampLeft]}>
-              {item.createdAt}
-            </Text>
-          </View>
-        )}
-      />
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="궁금한 점을 물어보세요"
-          placeholderTextColor={colors.textTertiary}
-          value={input}
-          onChangeText={setInput}
-          onSubmitEditing={handleSend}
-        />
-        <Pressable style={styles.sendButton} onPress={handleSend}>
-          <Ionicons name="send" size={16} color={colors.white} />
+  return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ScreenHeader />
+    <ScrollView ref={scroll} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled"
+      onContentSizeChange={() => {
+        if (signals.length > 1 || (signal?.replies.length ?? 0) > 0) scroll.current?.scrollToEnd({ animated: true });
+      }}>
+      <View style={styles.todayPillWrap}><View style={styles.todayPill}><Text style={styles.todayText}>오늘</Text></View></View>
+      {signal ? <>
+        {signals.map(conversation => <React.Fragment key={conversation.id}>
+          <Message text={conversation.prompt} time={conversation.detectedAt} />
+          {conversation.replies.map(reply => <React.Fragment key={reply.id}>
+            <Message text={reply.choice === 'LATER' ? '다음에 확인할게요' : reply.userText} time={reply.createdAt} user />
+            {reply.reply && <Message text={reply.reply} time={reply.createdAt} />}
+            {reply.policies && <PolicyCards policies={reply.policies} busy={busy}
+              retry={() => { void run(() => careApi.policies(conversation.id, reply.id)); }} /> }
+          </React.Fragment>)}
+          {conversation.referral && <Message text="담당자 연결 요청이 접수되었어요. 아직 담당자 배정 전이에요."
+            time={conversation.referral.requestedAt} />}
+          {offerSignal?.id === conversation.id && !conversation.referral && !declined.includes(conversation.id)
+            && !conversation.replies.some(r => r.policies?.status === 'PENDING') && <ReferralOffer
+              signal={conversation} busy={busy}
+              accept={() => { void run(() => careApi.refer(conversation.id)); }}
+              decline={() => setDeclined(ids => [...ids, conversation.id])} />}
+        </React.Fragment>)}
+        {editing && <>
+          <Message text={signal.options.find(option => option.value === 'CHANGED')?.label ?? '계획이 바뀌었어요'} user />
+          <Message text="어떤 계획으로 변경해 드릴까요? 설정하신 내용은 다음 달부터 바로 반영돼요." />
+          <ScheduleChangeForm key={signal.id} signal={signal} busy={busy}
+            save={change => { void send('CHANGED', change); }} />
+        </>}
+        {options.length > 0 && <View style={styles.quickReplyCol}>
+          {options.map(option => <Pressable key={option.value} accessibilityRole="button"
+            disabled={busy} accessibilityState={{ disabled: busy }}
+            style={[styles.quickReplyRow, busy && styles.disabled]} onPress={() => { void send(option.value); }}>
+            <Text style={styles.quickReplyText}>{option.value === 'LATER' ? '다음에 확인할게요' : option.label}</Text>
+          </Pressable>)}
+        </View>}
+      </> : summary && <Message text={summary.reminders[0]?.message ?? '아직 상담이 필요한 이상징후가 없어요.'} />}
+      {busy && !summary && <ActivityIndicator color={colors.chatAccent} accessibilityLabel="상담 불러오는 중" />}
+      {error && <View style={styles.errorWrap} accessibilityRole="alert">
+        <Text style={styles.errorText}>{error}</Text>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => { void refresh(); }}>
+          <Text style={styles.quickReplyText}>다시 확인하기</Text>
+        </Pressable>
+      </View>}
+    </ScrollView>
+    <View style={styles.inputRow}>
+      <View style={styles.inputCapsule}>
+        <TextInput style={styles.input} placeholder="궁금한 점을 물어보세요" placeholderTextColor={colors.textTertiary}
+          editable={false} accessibilityLabel="궁금한 점을 물어보세요" />
+        <Pressable accessibilityRole="button" accessibilityLabel="메시지 전송" accessibilityState={{ disabled: true }}
+          disabled style={styles.sendButton}>
+          <Ionicons name="send" size={20} color={colors.white} />
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
-  );
+    </View>
+  </KeyboardAvoidingView>;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  list: { padding: spacing.md, gap: 2, flexGrow: 1 },
-  todayPillWrap: { alignItems: 'center', marginBottom: spacing.sm },
-  todayPill: { backgroundColor: colors.graySoft, paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.full },
-  todayText: { fontSize: 12, color: colors.textTertiary, fontWeight: '600' },
-  messageBlock: { marginBottom: spacing.md },
-  botHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  avatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 6,
-  },
-  botName: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-  bubbleRow: { flexDirection: 'row' },
-  bubbleRowBot: { justifyContent: 'flex-start' },
-  bubbleRowUser: { justifyContent: 'flex-end' },
-  bubble: { maxWidth: '82%', padding: spacing.sm + 2, borderRadius: radius.md },
-  bubbleBot: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  bubbleUser: { backgroundColor: colors.primary, borderTopRightRadius: 4 },
-  textBot: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
-  textUser: { color: colors.white, fontSize: 14, lineHeight: 20 },
-  timestamp: { fontSize: 11, color: colors.textTertiary, marginTop: 4 },
-  timestampLeft: { textAlign: 'left', marginLeft: 2 },
-  timestampRight: { textAlign: 'right', marginRight: 2 },
-  quickReplyCol: { gap: spacing.sm, marginTop: spacing.sm },
-  quickReplyRow: {
-    backgroundColor: colors.graySoft,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-  },
-  quickReplyText: { fontSize: 14, fontWeight: '600', color: colors.primary },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.sm,
-    gap: spacing.sm,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
+  screen: { flex: 1, backgroundColor: colors.chatBackground },
+  list: { paddingHorizontal: spacing.md + spacing.xs, paddingTop: spacing.lg, paddingBottom: spacing.lg, flexGrow: 1 },
+  todayPillWrap: { alignItems: 'center', marginBottom: spacing.xl + spacing.sm + spacing.xs },
+  todayPill: { backgroundColor: colors.track, paddingHorizontal: spacing.md - 2, paddingVertical: spacing.xs, borderRadius: radius.full },
+  todayText: { color: colors.textTertiary, fontSize: 14, lineHeight: 20 },
+  messageRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md, gap: spacing.md },
+  messageRowUser: { justifyContent: 'flex-end' },
+  avatar: { width: 42, height: 42, borderRadius: radius.full, backgroundColor: colors.chatAvatar,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primaryLight },
+  messageColumn: { flex: 1, alignItems: 'flex-start' },
+  messageColumnUser: { alignItems: 'flex-end' },
+  botName: { fontSize: 14, lineHeight: 20, color: colors.textSecondary, marginLeft: spacing.xs, marginBottom: spacing.xs },
+  bubble: { padding: spacing.md, borderRadius: radius.lg },
+  bubbleBot: { maxWidth: '86%', backgroundColor: colors.white, borderTopLeftRadius: 2, borderWidth: 1,
+    borderColor: colors.border, shadowColor: colors.chatShadow, shadowOpacity: 0.04, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  bubbleUser: { maxWidth: '82%', backgroundColor: colors.chatAccent, borderTopRightRadius: spacing.xs },
+  textBot: { fontSize: 18, lineHeight: 28, color: colors.textPrimary },
+  textUser: { fontSize: 18, lineHeight: 28, color: colors.white },
+  timestamp: { fontSize: 12, lineHeight: 18, color: colors.textTertiary, marginTop: spacing.sm, marginLeft: spacing.xs },
+  timestampRight: { textAlign: 'right', marginRight: spacing.xs },
+  quickReplyCol: { gap: spacing.sm, marginTop: spacing.md, marginLeft: spacing.xl + spacing.md + spacing.xs },
+  quickReplyRow: { backgroundColor: colors.background, borderRadius: radius.sm,
+    paddingHorizontal: spacing.md + spacing.xs, paddingVertical: spacing.sm },
+  quickReplyText: { color: colors.chatAccent, fontSize: 16, lineHeight: 22 },
+  disabled: { opacity: 0.55 },
+  inputRow: { paddingHorizontal: spacing.md + spacing.xs, paddingVertical: spacing.md,
+    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.chatBackground },
+  inputCapsule: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.full, borderWidth: 1,
+    borderColor: colors.chatInputBorder, backgroundColor: colors.white, padding: spacing.xs, minHeight: 56 },
+  input: { flex: 1, minWidth: 0, paddingLeft: spacing.lg, paddingRight: spacing.sm, paddingVertical: spacing.sm,
+    fontSize: 18, color: colors.textPrimary },
+  sendButton: { width: 44, height: 44, borderRadius: radius.full, backgroundColor: colors.chatAccent,
+    alignItems: 'center', justifyContent: 'center' },
+  errorWrap: { marginTop: spacing.md, marginLeft: spacing.xl + spacing.md + spacing.xs, gap: spacing.sm },
+  errorText: { color: colors.danger, fontSize: 13, lineHeight: 20 },
 });

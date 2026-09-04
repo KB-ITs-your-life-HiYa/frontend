@@ -25,7 +25,7 @@ import { AccountType } from '../types';
 
 export type RootTabParamList = {
   Home: undefined;
-  Chat: undefined;
+  Chat: { signalId?: number } | undefined;
   Benefits: undefined;
   Housing: undefined;
   Play: undefined;
