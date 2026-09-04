@@ -13,6 +13,7 @@ import HousingCalendarScreen from '../screens/Housing/HousingCalendarScreen';
 import PlayScreen from '../screens/Play/PlayScreen';
 import MyPageScreen from '../screens/MyPage/MyPageScreen';
 import TodoListScreen from '../screens/Home/TodoListScreen';
+import AccountListScreen from '../screens/Home/AccountListScreen';
 import TopicDetailScreen from '../screens/Play/TopicDetailScreen';
 import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
 import CareScreen from '../screens/Care/CareScreen';
@@ -20,6 +21,7 @@ import CareScreen from '../screens/Care/CareScreen';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../screens/Auth/LoginScreen';
+import { AccountType } from '../types';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -38,6 +40,7 @@ export type RootStackParamList = {
   TodoList: undefined;
   TopicDetail: { title: string };
   ScheduleList: undefined;
+  AccountList: { type: AccountType };
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -104,6 +107,7 @@ export default function RootNavigator() {
                 <Stack.Screen name="MyPage" component={MyPageScreen} />
                 <Stack.Screen name="Care" component={CareScreen} />
                 <Stack.Screen name="TodoList" component={TodoListScreen} />
+                <Stack.Screen name="AccountList" component={AccountListScreen} />
                 <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
                 <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />
               </>

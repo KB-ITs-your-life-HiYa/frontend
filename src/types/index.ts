@@ -50,3 +50,26 @@ export interface LoginResponse {
   token: string;
   member: Member;
 }
+
+/** GET /members/me/accounts/summary 응답 */
+export interface AccountSummary {
+  depositTotal: number;
+  savingsTotal: number;
+  netAsset: number;
+}
+
+export type AccountType = 'DEPOSIT' | 'SAVINGS';
+
+/** GET /members/me/accounts?type=... 응답의 계좌 항목 */
+export interface AccountItem {
+  bankName: string;
+  accountType: AccountType;
+  balance: number;
+}
+
+/** GET /members/me/accounts?type=... 응답 */
+export interface AccountListResponse {
+  accountType: AccountType;
+  totalBalance: number;
+  accounts: AccountItem[];
+}
