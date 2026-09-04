@@ -1,4 +1,3 @@
-// 실제 오늘 날짜 — 캘린더/일정 화면들이 공유하는 기준일 (기기의 현재 날짜를 그대로 사용)
 export const TODAY = new Date();
 
 export function isSameDay(a: Date, b: Date) {
