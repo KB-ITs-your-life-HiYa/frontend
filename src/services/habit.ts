@@ -5,6 +5,7 @@ import {
   HabitPuzzleSetSummary,
   HabitQuizAnswerResult,
   HabitTodayQuiz,
+  HabitTopicCategory,
   HabitTopicDetail,
   HabitTopicSummary,
 } from '../types/habit';
@@ -15,6 +16,10 @@ export const habitApi = {
     api.post<HabitQuizAnswerResult>('/habit/quiz/today/answer', { optionId }),
   getPuzzleProgress: () => api.get<HabitPuzzleProgress>('/habit/puzzle/progress'),
   listPuzzleSets: () => api.get<HabitPuzzleSetSummary[]>('/habit/puzzle/sets'),
-  listTopics: () => api.get<HabitTopicSummary[]>('/habit/topics'),
-  getTopicDetail: (topicId: number) => api.get<HabitTopicDetail>(`/habit/topics/${topicId}`),
+  // "금융 상식 쑥쑥" 최상위 카테고리 목록 (신용/대출, 저축/투자, 소비습관)
+  listTopicCategories: () => api.get<HabitTopicCategory[]>('/habit/topics'),
+  // 카테고리 안의 세부 토픽 목록
+  listTopicsByCategory: (categoryId: number) =>
+    api.get<HabitTopicSummary[]>(`/habit/topics/${categoryId}/subtopics`),
+  getTopicDetail: (topicId: number) => api.get<HabitTopicDetail>(`/habit/topics/detail/${topicId}`),
 };

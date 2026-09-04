@@ -48,6 +48,15 @@ export interface HabitPuzzleSetSummary {
   totalPieces: number;
 }
 
+// "금융 상식 쑥쑥" 최상위 카테고리 (신용/대출, 저축/투자, 소비습관)
+export interface HabitTopicCategory {
+  id: number;
+  title: string;
+  subtitle: string;
+  icon: string;
+}
+
+// 카테고리 안의 세부 토픽 (예: 저축이란, 저축 기본 이해 ...)
 export interface HabitTopicSummary {
   id: number;
   title: string;
