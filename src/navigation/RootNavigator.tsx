@@ -15,6 +15,7 @@ import MyPageScreen from '../screens/MyPage/MyPageScreen';
 import TodoListScreen from '../screens/Home/TodoListScreen';
 import AccountListScreen from '../screens/Home/AccountListScreen';
 import NotificationsScreen from '../screens/Home/NotificationsScreen';
+import TopicCategoryScreen from '../screens/Play/TopicCategoryScreen';
 import TopicDetailScreen from '../screens/Play/TopicDetailScreen';
 import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
 import CareScreen from '../screens/Care/CareScreen';
@@ -39,6 +40,7 @@ export type RootStackParamList = {
   MyPage: undefined;
   Care: undefined;
   TodoList: undefined;
+  TopicCategory: { categoryId: number; title: string };
   TopicDetail: { topicId: number };
   ScheduleList: undefined;
   AccountList: { type: AccountType };
@@ -111,6 +113,7 @@ export default function RootNavigator() {
                 <Stack.Screen name="TodoList" component={TodoListScreen} />
                 <Stack.Screen name="AccountList" component={AccountListScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                <Stack.Screen name="TopicCategory" component={TopicCategoryScreen} />
                 <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
                 <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />
               </>

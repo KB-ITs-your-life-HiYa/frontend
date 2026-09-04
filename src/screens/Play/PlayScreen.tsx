@@ -25,11 +25,13 @@ import {
   HabitPuzzleProgress,
   HabitPuzzleSetSummary,
   HabitTodayQuiz,
-  HabitTopicSummary,
+  HabitTopicCategory,
 } from '../../types/habit';
 
 // 놀이 탭 — 금융 습관 트레이닝을 "퍼즐 수집" 게임으로 만든 화면
 // 퀴즈를 맞히면 현재 진행 중인 퍼즐 세트에 조각이 하나씩 쌓이고, 다 모으면 다음 세트로 넘어간다.
+// "금융 상식 쑥쑥"은 카테고리(신용/대출, 저축/투자, 소비습관) 카드를 먼저 보여주고,
+// 카드를 누르면 그 카테고리의 세부 토픽 목록(TopicCategoryScreen)으로 들어간다.
 const TOPIC_STYLES: { bg: string; iconColor: string }[] = [
   { bg: colors.blueSoft, iconColor: colors.primary },
   { bg: colors.yellowSoft, iconColor: colors.warning },
@@ -48,7 +50,7 @@ export default function PlayScreen() {
   const [progress, setProgress] = useState<HabitPuzzleProgress | null>(null);
   const [sets, setSets] = useState<HabitPuzzleSetSummary[]>([]);
   const [quiz, setQuiz] = useState<HabitTodayQuiz | null>(null);
-  const [topics, setTopics] = useState<HabitTopicSummary[]>([]);
+  const [categories, setCategories] = useState<HabitTopicCategory[]>([]);
 
   const [quizOpen, setQuizOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -57,16 +59,16 @@ export default function PlayScreen() {
   const loadAll = useCallback(async () => {
     setError(null);
     try {
-      const [progressRes, setsRes, quizRes, topicsRes] = await Promise.all([
+      const [progressRes, setsRes, quizRes, categoriesRes] = await Promise.all([
         habitApi.getPuzzleProgress(),
         habitApi.listPuzzleSets(),
         habitApi.getTodayQuiz(),
-        habitApi.listTopics(),
+        habitApi.listTopicCategories(),
       ]);
       setProgress(progressRes);
       setSets(setsRes);
       setQuiz(quizRes);
-      setTopics(topicsRes);
+      setCategories(categoriesRes);
     } catch {
       setError('놀이 탭 정보를 불러오지 못했어요. 서버 연결을 확인해주세요.');
     } finally {
@@ -240,16 +242,19 @@ export default function PlayScreen() {
         </Card>
 
         <Text style={styles.sectionTitle}>금융 상식 쑥쑥</Text>
-        {topics.map((t, i) => {
+        {categories.map((c, i) => {
           const style = TOPIC_STYLES[i % TOPIC_STYLES.length];
           return (
-            <Pressable key={t.id} onPress={() => navigation.navigate('TopicDetail', { topicId: t.id })}>
+            <Pressable
+              key={c.id}
+              onPress={() => navigation.navigate('TopicCategory', { categoryId: c.id, title: c.title })}
+            >
               <Card style={styles.topicCard}>
                 <View style={[styles.topicIcon, { backgroundColor: style.bg }]}>
-                  <MaterialCommunityIcons name={t.icon as any} size={22} color={style.iconColor} />
+                  <MaterialCommunityIcons name={c.icon as any} size={22} color={style.iconColor} />
                 </View>
-                <Text style={styles.topicTitle}>{t.title}</Text>
-                <Text style={styles.topicSubtitle}>{t.subtitle}</Text>
+                <Text style={styles.topicTitle}>{c.title}</Text>
+                <Text style={styles.topicSubtitle}>{c.subtitle}</Text>
               </Card>
             </Pressable>
           );
