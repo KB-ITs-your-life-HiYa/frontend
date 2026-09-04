@@ -14,3 +14,8 @@ export function diffDays(target: Date, base: Date) {
 export function formatMonthDay(date: Date) {
   return `${date.getMonth() + 1}.${date.getDate()}`;
 }
+
+// "D-1,647" 형식으로 표시. days 는 기준일까지 남은 일수 (음수면 이미 지난 것)
+export function formatDday(days: number) {
+  return `D-${days.toLocaleString('ko-KR')}`;
+}

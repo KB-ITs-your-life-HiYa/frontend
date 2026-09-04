@@ -43,6 +43,7 @@ export interface Member {
   tier: EligibilityTier;
   tierLabel: string;
   daysUntilSupportEnd: number | null;
+  homeRegionCode: string | null;
 }
 
 /** POST /auth/login 응답 */

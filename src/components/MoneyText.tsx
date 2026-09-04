@@ -5,14 +5,15 @@ import { colors } from '../constants/colors';
 interface Props {
   amount: number;
   variant?: 'large' | 'medium';
+  color?: string;
 }
 
 // 금액 표시. 숫자와 "원"을 다른 크기·굵기로 분리해서 렌더링한다
-export default function MoneyText({ amount, variant = 'medium' }: Props) {
+export default function MoneyText({ amount, variant = 'medium', color }: Props) {
   return (
     <Text>
-      <Text style={styles[variant].number}>{amount.toLocaleString('ko-KR')}</Text>
-      <Text style={styles[variant].won}>원</Text>
+      <Text style={[styles[variant].number, color ? { color } : null]}>{amount.toLocaleString('ko-KR')}</Text>
+      <Text style={[styles[variant].won, color ? { color } : null]}>원</Text>
     </Text>
   );
 }

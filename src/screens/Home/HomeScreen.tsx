@@ -5,17 +5,26 @@ import ScreenHeader from '../../components/ScreenHeader';
 import CareBanner from './CareBanner';
 import Badge from '../../components/Badge';
 import { colors, spacing } from '../../constants/colors';
+import { useAuth } from '../../contexts/AuthContext';
+import { formatDday } from '../../utils/today';
 import AssetSummaryCard from './AssetSummaryCard';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const { member } = useAuth();
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader />
+      <ScreenHeader showNotification />
       <CareBanner />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Badge label="자립수당 종료까지 D-1,647" icon="flag" style={{ backgroundColor: '#FEBB00' }} />
+        {member?.daysUntilSupportEnd != null ? (
+          <Badge
+            label={`자립수당 종료까지 ${formatDday(member.daysUntilSupportEnd)}`}
+            icon="flag"
+            style={{ backgroundColor: '#FEBB00' }}
+          />
+        ) : null}
         <AssetSummaryCard />
       </ScrollView>
     </View>
