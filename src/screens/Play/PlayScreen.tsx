@@ -1,92 +1,195 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import ProgressBar from '../../components/ProgressBar';
+import PuzzleBoard from '../../components/PuzzleBoard';
 import { colors, radius, spacing } from '../../constants/colors';
+import { PUZZLE_COVERS } from '../../constants/puzzleAssets';
+import { habitApi } from '../../services/habit';
+import { ApiError } from '../../services/api';
+import {
+  HabitPuzzleProgress,
+  HabitPuzzleSetSummary,
+  HabitTodayQuiz,
+  HabitTopicSummary,
+} from '../../types/habit';
 
 // 놀이 탭 — 금융 습관 트레이닝을 "퍼즐 수집" 게임으로 만든 화면
-const TOTAL_PIECES = 16;
-const PIECE_COLORS = ['#1D4ED8', '#3B82F6', '#F5B300', '#B45309', '#2563EB', '#BFDBFE', '#FDE7B0'];
-
-const QUIZ = {
-  question: '신용카드를 사용할 때, 할부 결제는 신용점수에 어떤 영향을 미칠까요?',
-  options: [
-    { id: 'a', label: '할부금을 연체 없이 갚으면 문제되지 않는다', correct: true },
-    { id: 'b', label: '할부 결제 자체가 신용점수를 무조건 낮춘다', correct: false },
-  ],
-};
-
-const topics = [
-  {
-    id: '1',
-    title: '신용, 대출',
-    subtitle: '안전한 금융 생활의 첫걸음',
-    icon: 'bank' as const,
-    bg: colors.blueSoft,
-    iconColor: colors.primary,
-    detail: '신용점수는 연체 없이 꾸준히 상환한 이력, 신용 사용 비율(한도의 30~50%)로 관리하는 게 좋아요.',
-  },
-  {
-    id: '2',
-    title: '저축, 투자',
-    subtitle: '미래를 위한 든든한 준비',
-    icon: 'piggy-bank' as const,
-    bg: colors.yellowSoft,
-    iconColor: colors.warning,
-    detail: '청년내일저축계좌, 청년도약계좌처럼 정부 매칭 지원이 있는 저축 상품부터 채우는 걸 추천해요.',
-  },
-  {
-    id: '3',
-    title: '소비 습관',
-    subtitle: '현명하게 쓰고 관리하기',
-    icon: 'clipboard-text-outline' as const,
-    bg: colors.accentLight,
-    iconColor: '#B78103',
-    detail: '고정비·변동비·여유분을 나눠서 관리하면, 갑자기 지출이 늘어도 쉽게 알아챌 수 있어요.',
-  },
+// 퀴즈를 맞히면 현재 진행 중인 퍼즐 세트에 조각이 하나씩 쌓이고, 다 모으면 다음 세트로 넘어간다.
+const TOPIC_STYLES: { bg: string; iconColor: string }[] = [
+  { bg: colors.blueSoft, iconColor: colors.primary },
+  { bg: colors.yellowSoft, iconColor: colors.warning },
+  { bg: colors.accentLight, iconColor: '#B78103' },
+  { bg: colors.greenSoft, iconColor: colors.success },
 ];
 
 export default function PlayScreen() {
   const navigation = useNavigation<any>();
-  const [collected, setCollected] = useState(7);
+  const { width } = useWindowDimensions();
+  const boardSize = Math.min(width - spacing.md * 2 - spacing.md * 2, 320);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [progress, setProgress] = useState<HabitPuzzleProgress | null>(null);
+  const [sets, setSets] = useState<HabitPuzzleSetSummary[]>([]);
+  const [quiz, setQuiz] = useState<HabitTodayQuiz | null>(null);
+  const [topics, setTopics] = useState<HabitTopicSummary[]>([]);
+
   const [quizOpen, setQuizOpen] = useState(false);
-  const [result, setResult] = useState<'correct' | 'incorrect' | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [answerError, setAnswerError] = useState<string | null>(null);
 
-  const pieces = useMemo(() => {
-    return Array.from({ length: TOTAL_PIECES }, (_, i) => (i < collected ? PIECE_COLORS[i % PIECE_COLORS.length] : null));
-  }, [collected]);
+  const loadAll = useCallback(async () => {
+    setError(null);
+    try {
+      const [progressRes, setsRes, quizRes, topicsRes] = await Promise.all([
+        habitApi.getPuzzleProgress(),
+        habitApi.listPuzzleSets(),
+        habitApi.getTodayQuiz(),
+        habitApi.listTopics(),
+      ]);
+      setProgress(progressRes);
+      setSets(setsRes);
+      setQuiz(quizRes);
+      setTopics(topicsRes);
+    } catch {
+      setError('놀이 탭 정보를 불러오지 못했어요. 서버 연결을 확인해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handleAnswer = (correct: boolean) => {
-    if (correct) {
-      setResult('correct');
-      setCollected((c) => Math.min(TOTAL_PIECES, c + 1));
-    } else {
-      setResult('incorrect');
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const handleAnswer = async (optionId: number) => {
+    if (submitting || !quiz || quiz.answered) return;
+    setSubmitting(true);
+    setAnswerError(null);
+    try {
+      const res = await habitApi.submitAnswer(optionId);
+      setQuiz((prev) =>
+        prev
+          ? {
+              ...prev,
+              answered: true,
+              result: { selectedOptionId: optionId, correct: res.correct, explanation: res.explanation },
+            }
+          : prev
+      );
+      setProgress(res.progress);
+      habitApi.listPuzzleSets().then(setSets).catch(() => {});
+
+      if (res.justCompleted) {
+        Alert.alert('퍼즐 완성!', `'${res.progress.title}' 퍼즐을 모두 모았어요. 다음 퍼즐이 열렸어요!`);
+      }
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'HABIT_QUIZ_ALREADY_ANSWERED') {
+        const fresh = await habitApi.getTodayQuiz().catch(() => null);
+        if (fresh) setQuiz(fresh);
+      } else {
+        setAnswerError('답변 제출에 실패했어요. 잠시 후 다시 시도해주세요.');
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.screen}>
+        <ScreenHeader />
+        <View style={styles.centerFill}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !progress || !quiz) {
+    return (
+      <View style={styles.screen}>
+        <ScreenHeader />
+        <View style={styles.centerFill}>
+          <Text style={styles.errorText}>{error ?? '정보를 불러오지 못했어요.'}</Text>
+          <Button label="다시 시도" size="sm" onPress={() => { setLoading(true); loadAll(); }} style={{ marginTop: spacing.md }} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
       <ScreenHeader />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Card style={styles.puzzleCard}>
-          <Text style={styles.puzzleTitle}>퍼즐 완성도</Text>
-          <View style={styles.grid}>
-            {pieces.map((color, i) => (
-              <View key={i} style={[styles.piece, { backgroundColor: color ?? colors.track }]} />
-            ))}
+          <View style={styles.puzzleHeaderRow}>
+            <Text style={styles.puzzleTitle}>{progress.title}</Text>
+            {progress.allSetsCompleted ? (
+              <View style={styles.doneBadge}>
+                <Ionicons name="trophy" size={12} color={colors.warning} />
+                <Text style={styles.doneBadgeText}>모든 퍼즐 완성</Text>
+              </View>
+            ) : null}
           </View>
+
+          <View style={styles.boardWrap}>
+            <PuzzleBoard assetKey={progress.assetKey} collectedPieces={progress.collectedPieces} size={boardSize} />
+          </View>
+
           <View style={styles.puzzleFooter}>
             <Text style={styles.puzzleLabel}>진행률</Text>
             <Text style={styles.puzzleCount}>
-              {collected} / {TOTAL_PIECES} 조각 모음
+              {progress.collectedPieces} / {progress.totalPieces} 조각 모음
             </Text>
           </View>
-          <ProgressBar progress={collected / TOTAL_PIECES} />
+          <ProgressBar progress={progress.collectedPieces / progress.totalPieces} />
+
+          {sets.length > 1 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.setStrip} contentContainerStyle={{ gap: spacing.sm }}>
+              {sets.map((s) => {
+                const cover = PUZZLE_COVERS[s.assetKey];
+                const locked = s.status === 'LOCKED';
+                return (
+                  <View key={s.puzzleSetId} style={styles.setThumbWrap}>
+                    <View style={styles.setThumb}>
+                      {cover ? (
+                        <Image source={cover} style={[styles.setThumbImage, locked && styles.setThumbLocked]} />
+                      ) : null}
+                      {locked ? (
+                        <View style={styles.lockOverlay}>
+                          <Ionicons name="lock-closed" size={14} color={colors.white} />
+                        </View>
+                      ) : s.status === 'COMPLETED' ? (
+                        <View style={styles.checkBadge}>
+                          <Ionicons name="checkmark" size={12} color={colors.white} />
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={styles.setThumbLabel} numberOfLines={1}>
+                      {locked ? '???' : s.title}
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          ) : null}
         </Card>
 
         <Card style={styles.quizCard}>
@@ -97,48 +200,60 @@ export default function PlayScreen() {
           <Text style={styles.quizSubtitle}>퀴즈를 풀고 퍼즐 조각을 획득하세요!</Text>
 
           <View style={styles.quizQuestionBox}>
-            <Text style={styles.quizQuestionText}>{QUIZ.question}</Text>
+            <Text style={styles.quizQuestionText}>{quiz.question}</Text>
           </View>
 
-          {!quizOpen ? (
+          {!quizOpen && !quiz.answered ? (
             <Button label="퀴즈 풀기" onPress={() => setQuizOpen(true)} />
           ) : (
             <View style={{ gap: spacing.sm }}>
-              {QUIZ.options.map((opt) => (
-                <Pressable
-                  key={opt.id}
-                  style={[
-                    styles.optionRow,
-                    result === 'correct' && opt.correct ? styles.optionCorrect : null,
-                    result === 'incorrect' && !opt.correct ? styles.optionIncorrect : null,
-                  ]}
-                  onPress={() => handleAnswer(opt.correct)}
-                  disabled={result === 'correct'}
-                >
-                  <Text style={styles.optionText}>{opt.label}</Text>
-                </Pressable>
-              ))}
-              {result === 'correct' ? (
-                <Text style={styles.resultCorrect}>정답이에요! 퍼즐 조각을 1개 획득했어요.</Text>
-              ) : result === 'incorrect' ? (
-                <Text style={styles.resultIncorrect}>아쉬워요, 다시 한번 골라보세요.</Text>
+              {quiz.options.map((opt) => {
+                const isSelected = quiz.result?.selectedOptionId === opt.id;
+                const showCorrect = quiz.answered && isSelected && quiz.result?.correct;
+                const showIncorrect = quiz.answered && isSelected && quiz.result?.correct === false;
+                return (
+                  <Pressable
+                    key={opt.id}
+                    style={[
+                      styles.optionRow,
+                      showCorrect ? styles.optionCorrect : null,
+                      showIncorrect ? styles.optionIncorrect : null,
+                    ]}
+                    onPress={() => handleAnswer(opt.id)}
+                    disabled={submitting || quiz.answered}
+                  >
+                    <Text style={styles.optionText}>{opt.label}</Text>
+                  </Pressable>
+                );
+              })}
+              {quiz.answered && quiz.result ? (
+                <>
+                  <Text style={quiz.result.correct ? styles.resultCorrect : styles.resultIncorrect}>
+                    {quiz.result.correct ? '정답이에요! 퍼즐 조각을 1개 획득했어요.' : '아쉬워요, 오늘 퀴즈는 여기까지예요.'}
+                  </Text>
+                  <Text style={styles.explanationText}>{quiz.result.explanation}</Text>
+                </>
               ) : null}
+              {answerError ? <Text style={styles.resultIncorrect}>{answerError}</Text> : null}
             </View>
           )}
         </Card>
 
         <Text style={styles.sectionTitle}>금융 상식 쑥쑥</Text>
-        {topics.map((t) => (
-          <Pressable key={t.id} onPress={() => navigation.navigate('TopicDetail', { title: t.title })}>
-            <Card style={styles.topicCard}>
-              <View style={[styles.topicIcon, { backgroundColor: t.bg }]}>
-                <MaterialCommunityIcons name={t.icon} size={22} color={t.iconColor} />
-              </View>
-              <Text style={styles.topicTitle}>{t.title}</Text>
-              <Text style={styles.topicSubtitle}>{t.subtitle}</Text>
-            </Card>
-          </Pressable>
-        ))}
+        {topics.map((t, i) => {
+          const style = TOPIC_STYLES[i % TOPIC_STYLES.length];
+          return (
+            <Pressable key={t.id} onPress={() => navigation.navigate('TopicDetail', { topicId: t.id })}>
+              <Card style={styles.topicCard}>
+                <View style={[styles.topicIcon, { backgroundColor: style.bg }]}>
+                  <MaterialCommunityIcons name={t.icon as any} size={22} color={style.iconColor} />
+                </View>
+                <Text style={styles.topicTitle}>{t.title}</Text>
+                <Text style={styles.topicSubtitle}>{t.subtitle}</Text>
+              </Card>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -148,13 +263,58 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1 },
   content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl },
+  centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  errorText: { fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
   puzzleCard: { gap: spacing.sm },
+  puzzleHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   puzzleTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  piece: { width: '23%', aspectRatio: 1, borderRadius: 10 },
+  doneBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.warningLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  doneBadgeText: { fontSize: 11, fontWeight: '700', color: colors.warning },
+  boardWrap: { alignItems: 'center' },
   puzzleFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   puzzleLabel: { fontSize: 13, color: colors.textSecondary },
   puzzleCount: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  setStrip: { marginTop: spacing.xs },
+  setThumbWrap: { width: 64, alignItems: 'center', gap: 4 },
+  setThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    backgroundColor: colors.track,
+  },
+  setThumbImage: { width: '100%', height: '100%' },
+  setThumbLocked: { opacity: 0.35 },
+  lockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(25,31,40,0.25)',
+  },
+  checkBadge: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setThumbLabel: { fontSize: 10, color: colors.textTertiary },
   quizCard: { gap: spacing.sm },
   quizHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   quizTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
@@ -176,6 +336,7 @@ const styles = StyleSheet.create({
   optionText: { fontSize: 13, color: colors.textPrimary },
   resultCorrect: { fontSize: 12, color: colors.success, fontWeight: '600' },
   resultIncorrect: { fontSize: 12, color: colors.danger, fontWeight: '600' },
+  explanationText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginTop: spacing.xs },
   topicCard: { gap: 8, alignItems: 'flex-start' },
   topicIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
