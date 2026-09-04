@@ -9,7 +9,25 @@ import { colors, radius, spacing } from '../../constants/colors';
 import { habitApi } from '../../services/habit';
 import { HabitTopicDetail } from '../../types/habit';
 
-// 놀이 탭 "금융 상식 쑥쑥" 주제 상세 화면 — GET /habit/topics/{topicId}
+// 놀이 탭 "금융 상식 쑥쑥" 주제 상세 화면 — GET /habit/topics/detail/{topicId}
+
+// body 안의 **텍스트** 마커를 볼드 + 하이라이트 배경으로 렌더링한다.
+// 서버가 content를 마크다운처럼 **로 감싸서 내려주고(R__seed_06_habit.sql 참고),
+// 프론트는 그 부분만 강조 스타일을 입힌 <Text>로 바꿔치기한다.
+function renderFormattedBody(body: string) {
+  const parts = body.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <Text key={i} style={styles.highlight}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+    return part;
+  });
+}
+
 export default function TopicDetailScreen() {
   const route = useRoute<any>();
   const topicId: number | undefined = route.params?.topicId;
@@ -56,7 +74,7 @@ export default function TopicDetailScreen() {
               <Text style={styles.subtitle}>{topic.subtitle}</Text>
             </Card>
             <Card>
-              <Text style={styles.body}>{topic.body}</Text>
+              <Text style={styles.body}>{renderFormattedBody(topic.body)}</Text>
             </Card>
           </ScrollView>
         )}
@@ -82,4 +100,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
   subtitle: { fontSize: 13, color: colors.textTertiary, textAlign: 'center' },
   body: { fontSize: 14, color: colors.textPrimary, lineHeight: 22 },
+  highlight: {
+    fontWeight: '700',
+    color: colors.textPrimary,
+    backgroundColor: colors.accentLight,
+  },
 });

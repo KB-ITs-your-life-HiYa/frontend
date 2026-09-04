@@ -27,17 +27,12 @@ import {
   HabitTodayQuiz,
   HabitTopicCategory,
 } from '../../types/habit';
+import { getCategoryIconStyle } from '../../constants/habitStyles';
 
 // 놀이 탭 — 금융 습관 트레이닝을 "퍼즐 수집" 게임으로 만든 화면
 // 퀴즈를 맞히면 현재 진행 중인 퍼즐 세트에 조각이 하나씩 쌓이고, 다 모으면 다음 세트로 넘어간다.
 // "금융 상식 쑥쑥"은 카테고리(신용/대출, 저축/투자, 소비습관) 카드를 먼저 보여주고,
 // 카드를 누르면 그 카테고리의 세부 토픽 목록(TopicCategoryScreen)으로 들어간다.
-const TOPIC_STYLES: { bg: string; iconColor: string }[] = [
-  { bg: colors.blueSoft, iconColor: colors.primary },
-  { bg: colors.yellowSoft, iconColor: colors.warning },
-  { bg: colors.accentLight, iconColor: '#B78103' },
-  { bg: colors.greenSoft, iconColor: colors.success },
-];
 
 export default function PlayScreen() {
   const navigation = useNavigation<any>();
@@ -242,19 +237,19 @@ export default function PlayScreen() {
         </Card>
 
         <Text style={styles.sectionTitle}>금융 상식 쑥쑥</Text>
-        {categories.map((c, i) => {
-          const style = TOPIC_STYLES[i % TOPIC_STYLES.length];
+        {categories.map((cat) => {
+          const style = getCategoryIconStyle(cat.id);
           return (
             <Pressable
-              key={c.id}
-              onPress={() => navigation.navigate('TopicCategory', { categoryId: c.id, title: c.title })}
+              key={cat.id}
+              onPress={() => navigation.navigate('TopicCategory', { categoryId: cat.id, title: cat.title })}
             >
               <Card style={styles.topicCard}>
                 <View style={[styles.topicIcon, { backgroundColor: style.bg }]}>
-                  <MaterialCommunityIcons name={c.icon as any} size={22} color={style.iconColor} />
+                  <MaterialCommunityIcons name={cat.icon as any} size={22} color={style.iconColor} />
                 </View>
-                <Text style={styles.topicTitle}>{c.title}</Text>
-                <Text style={styles.topicSubtitle}>{c.subtitle}</Text>
+                <Text style={styles.topicTitle}>{cat.title}</Text>
+                <Text style={styles.topicSubtitle}>{cat.subtitle}</Text>
               </Card>
             </Pressable>
           );
