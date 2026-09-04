@@ -8,7 +8,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { useCare } from '../../hooks/useCare';
 import { careApi } from '../../services/care';
-import type { CareButtonRequest, CareChoice } from '../../types/care';
+import type { CareButtonRequest, CareChoice, CareFreeTextRequest } from '../../types/care';
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
@@ -33,20 +33,30 @@ export default function ChatScreen() {
   const { summary, busy, error, run, refresh } = useCare();
   const [editingSignal, setEditingSignal] = useState<number | null>(null);
   const [declined, setDeclined] = useState<number[]>([]);
+  const [input, setInput] = useState('');
   const policyAttempts = useRef(new Set<number>());
   useFocusEffect(useCallback(() => {
     setDeclined([]);
     policyAttempts.current.clear();
   }, []));
   const retry = useRef<{ key: string; request: CareButtonRequest } | null>(null);
+  const messageRetry = useRef<{ key: string; request: CareFreeTextRequest } | null>(null);
   const scroll = useRef<ScrollView>(null);
   const signals = summary?.signals ?? [];
-  const signal = signals[signals.length - 1];
+  const signal = [...signals].reverse().find(item => item.status === 'OPEN');
   const options = signal && !busy && signal.replies.length === 0 && editingSignal !== signal.id ? signal.options : [];
-  const editing = signal && editingSignal === signal.id && signal.status === 'OPEN' && signal.replies.length === 0;
+  const editing = signal && editingSignal === signal.id && signal.status === 'OPEN';
 
-  const offerSignal = signal?.referralEligible && (signal.recheckedAt || signal.replies.some(r => r.choice === 'DIFFICULT'))
+  const offerSignal = signal?.referralEligible && (signal.recheckedAt || signal.responseResult === 'NEEDS_CARE')
     ? signal : [...signals].reverse().find(s => s.referralEligible && s.recheckedAt);
+
+  useEffect(() => {
+    if (!signal || signal.status !== 'OPEN') return;
+    const latest = signal.replies[signal.replies.length - 1];
+    if (latest?.inputType === 'FREE_TEXT' && latest.aiStatus === 'READY' && latest.choice === 'CHANGED') {
+      setEditingSignal(signal.id);
+    }
+  }, [signal]);
 
   // 저장 직후 또는 재진입 시 미완료 정책 조회만 이어간다. 오류는 명시적인 재시도로 처리한다.
   useEffect(() => {
@@ -78,6 +88,19 @@ export default function ChatScreen() {
     }
   }
 
+  async function sendMessage() {
+    const value = input.trim();
+    if (!signal || busy || !value) return;
+    const key = `${signal.id}:${value}`;
+    if (messageRetry.current?.key !== key) messageRetry.current = {
+      key, request: { input: value, requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}` },
+    };
+    if (await run(() => careApi.message(signal.id, messageRetry.current!.request))) {
+      messageRetry.current = null;
+      setInput('');
+    }
+  }
+
   return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScreenHeader />
     <ScrollView ref={scroll} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled"
@@ -89,8 +112,20 @@ export default function ChatScreen() {
         {signals.map(conversation => <React.Fragment key={conversation.id}>
           <Message text={conversation.prompt} time={conversation.detectedAt} />
           {conversation.replies.map(reply => <React.Fragment key={reply.id}>
-            <Message text={reply.choice === 'LATER' ? '다음에 확인할게요' : reply.userText} time={reply.createdAt} user />
+            <Message text={reply.inputType === 'BUTTON' && reply.choice === 'LATER' ? '다음에 확인할게요' : reply.userText}
+              time={reply.createdAt} user />
             {reply.reply && <Message text={reply.reply} time={reply.createdAt} />}
+            {reply.aiStatus === 'PENDING' && <View style={styles.aiStatus}>
+              <ActivityIndicator size="small" color={colors.chatAccent} />
+              <Text style={styles.aiStatusText}>답변을 준비하고 있어요.</Text>
+            </View>}
+            {reply.aiStatus === 'ERROR' && <View style={styles.aiStatus} accessibilityRole="alert">
+              <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
+              <Pressable accessibilityRole="button" disabled={busy}
+                onPress={() => { void run(() => careApi.retryGemini(conversation.id, reply.id)); }}>
+                <Text style={styles.quickReplyText}>다시 답변받기</Text>
+              </Pressable>
+            </View>}
             {reply.policies && <PolicyCards policies={reply.policies} busy={busy}
               retry={() => { void run(() => careApi.policies(conversation.id, reply.id)); }} /> }
           </React.Fragment>)}
@@ -127,9 +162,13 @@ export default function ChatScreen() {
     <View style={styles.inputRow}>
       <View style={styles.inputCapsule}>
         <TextInput style={styles.input} placeholder="궁금한 점을 물어보세요" placeholderTextColor={colors.textTertiary}
-          editable={false} accessibilityLabel="궁금한 점을 물어보세요" />
-        <Pressable accessibilityRole="button" accessibilityLabel="메시지 전송" accessibilityState={{ disabled: true }}
-          disabled style={styles.sendButton}>
+          value={input} onChangeText={setInput} maxLength={1000} editable={Boolean(signal) && !busy}
+          returnKeyType="send" onSubmitEditing={() => { void sendMessage(); }}
+          accessibilityLabel="궁금한 점을 물어보세요" />
+        <Pressable accessibilityRole="button" accessibilityLabel="메시지 전송"
+          accessibilityState={{ disabled: !signal || busy || !input.trim() }}
+          disabled={!signal || busy || !input.trim()} onPress={() => { void sendMessage(); }}
+          style={[styles.sendButton, (!signal || busy || !input.trim()) && styles.disabled]}>
           <Ionicons name="send" size={20} color={colors.white} />
         </Pressable>
       </View>
@@ -174,4 +213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center' },
   errorWrap: { marginTop: spacing.md, marginLeft: spacing.xl + spacing.md + spacing.xs, gap: spacing.sm },
   errorText: { color: colors.danger, fontSize: 13, lineHeight: 20 },
+  aiStatus: { marginLeft: spacing.xl + spacing.md + spacing.xs, marginBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  aiStatusText: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
 });
