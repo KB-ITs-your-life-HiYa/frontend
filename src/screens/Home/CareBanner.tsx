@@ -6,16 +6,31 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { RootTabParamList } from '../../navigation/RootNavigator';
 import { useCare } from '../../hooks/useCare';
 import { colors, spacing } from '../../constants/colors';
+import type { CareSignal } from '../../types/care';
+
+function recheckMessage(signal: CareSignal) {
+  switch (signal.type) {
+    case 'MISSED_SAVING':
+      return '적금 납입일로부터 일주일이 지났지만 아직 입금되지 않았어요. 혹시 확인이나 도움이 필요하신가요?';
+    case 'MISSED_PAYMENT':
+      return '납부 예정일로부터 일주일이 지났지만 아직 납부되지 않았어요. 혹시 확인이나 도움이 필요하신가요?';
+    case 'INCOME_MISSING':
+      return '입금 예정일로부터 일주일이 지났지만 아직 입금되지 않았어요. 혹시 확인이나 도움이 필요하신가요?';
+  }
+}
 
 export default function CareBanner() {
   const { summary, error, busy } = useCare();
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const focused = useIsFocused();
   const [dismissed, setDismissed] = useState<string>();
-  const signal = useMemo(() => summary?.signals.filter(item => item.status === 'OPEN').at(-1), [summary]);
+  const signal = useMemo(() => {
+    const open = summary?.signals.filter(item => item.status === 'OPEN') ?? [];
+    return open.filter(item => item.recheckedAt !== null).at(-1) ?? open.at(-1);
+  }, [summary]);
   const reminder = summary?.reminders[0];
   const key = signal ? `signal-${signal.id}-${signal.recheckedAt ?? signal.detectedAt}` : reminder ? `reminder-${summary?.asOf}-${reminder.cycleId}` : undefined;
-  const message = signal?.prompt ?? reminder?.message;
+  const message = signal?.recheckedAt ? recheckMessage(signal) : signal?.prompt ?? reminder?.message;
   const close = () => setDismissed(key);
   const openChat = () => { close(); navigation.navigate('Chat', signal ? { signalId: signal.id } : undefined); };
 
