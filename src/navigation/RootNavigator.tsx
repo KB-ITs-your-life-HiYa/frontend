@@ -31,7 +31,7 @@ export type RootStackParamList = {
   MyPage: undefined;
   Care: undefined;
   TodoList: undefined;
-  TopicDetail: { title: string };
+  TopicDetail: { topicId: number };
   ScheduleList: undefined;
 };
 
