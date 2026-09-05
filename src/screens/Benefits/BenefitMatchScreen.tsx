@@ -6,6 +6,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
 import Button from '../../components/Button';
+import SectionHeader from '../../components/SectionHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
 import { benefitApi } from '../../services/benefit';
@@ -79,28 +80,29 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
   return (
     <View style={styles.screen}>
       <ScreenHeader />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabBar}
-        contentContainerStyle={styles.tabBarContent}
-      >
-        {categories.map((cat) => {
-          const active = activeCategory === cat.category;
-          return (
-            <Pressable
-              key={cat.category}
-              onPress={() => setActiveCategory(cat.category)}
-              style={[styles.tab, active ? styles.tabActive : null]}
-            >
-              <Text style={[styles.tabText, active ? styles.tabTextActive : null]}>{cat.category}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <InfoCard survey={survey} onRetake={onRetake} />
+
+        <SectionHeader title="추천 지원 정책" />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {categories.map((cat) => {
+            const active = activeCategory === cat.category;
+            return (
+              <Pressable
+                key={cat.category}
+                onPress={() => setActiveCategory(cat.category)}
+                style={[styles.tab, active ? styles.tabActive : null]}
+              >
+                <Text style={[styles.tabText, active ? styles.tabTextActive : null]}>{cat.category}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
         {activeItems.map((item) => (
           <SubsidyCard
             key={item.subsidyId}
@@ -198,15 +200,16 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 13, color: colors.textTertiary },
-  tabBar: { flexGrow: 0, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  tabBarContent: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.sm },
+  tabBarContent: { gap: spacing.sm, paddingBottom: spacing.md },
   tab: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
-    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'transparent',
   },
-  tabActive: { backgroundColor: colors.primary },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   tabTextActive: { color: colors.white },
   container: { flex: 1 },
