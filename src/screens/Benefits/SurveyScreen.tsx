@@ -6,11 +6,15 @@ import Button from '../../components/Button';
 import ProgressBar from '../../components/ProgressBar';
 import ToggleRow from '../../components/ToggleRow';
 import { colors, radius, spacing } from '../../constants/colors';
+import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
 import { surveyApi } from '../../services/benefit';
-import type { EmploymentStatus, HousingType, SurveyTag } from '../../types/benefit';
+import type { EmploymentStatus, HousingType, SurveyResponse, SurveyTag } from '../../types/benefit';
 
 interface Props {
   onComplete: () => void;
+  /** 있으면 "다시하기" — 기존 응답을 채워서 시작하고, 1단계에서도 취소로 빠져나갈 수 있다 */
+  initialValues?: SurveyResponse;
+  onCancel?: () => void;
 }
 
 const TOTAL_STEPS = 4;
@@ -44,47 +48,45 @@ function incomeAmountLabel(pct: number, householdSize: number | null, note?: str
   return `약 ${amount.toLocaleString()}원 이하 (${pct}% 이하${noteText})`;
 }
 
-const EMPLOYMENT_OPTIONS: { value: EmploymentStatus; label: string }[] = [
-  { value: 'EMPLOYED', label: '재직 중' },
-  { value: 'SELF_EMPLOYED', label: '자영업' },
-  { value: 'STUDENT', label: '재학 중' },
-  { value: 'JOB_SEEKER', label: '취업준비생' },
-  { value: 'UNEMPLOYED', label: '무직' },
-];
+const EMPLOYMENT_OPTIONS: { value: EmploymentStatus; label: string }[] = (
+  ['EMPLOYED', 'SELF_EMPLOYED', 'STUDENT', 'JOB_SEEKER', 'UNEMPLOYED'] as EmploymentStatus[]
+).map((value) => ({ value, label: EMPLOYMENT_STATUS_LABELS[value] }));
 
-const HOUSING_OPTIONS: { value: HousingType; label: string }[] = [
-  { value: 'OWNED', label: '자가' },
-  { value: 'JEONSE', label: '전세' },
-  { value: 'MONTHLY_RENT', label: '월세' },
-  { value: 'FREE', label: '무상거주' },
-  { value: 'SELF_RELIANCE_HOUSE', label: '자립생활관 등' },
-  { value: 'PUBLIC_RENTAL', label: '공공임대' },
-];
+const HOUSING_OPTIONS: { value: HousingType; label: string }[] = (
+  ['OWNED', 'JEONSE', 'MONTHLY_RENT', 'FREE', 'SELF_RELIANCE_HOUSE', 'PUBLIC_RENTAL'] as HousingType[]
+).map((value) => ({ value, label: HOUSING_TYPE_LABELS[value] }));
 
-const TAG_OPTIONS: { value: SurveyTag; label: string }[] = [
-  { value: 'SINGLE_PARENT', label: '한부모 가정' },
-  { value: 'MULTICULTURAL', label: '다문화 가정' },
-  { value: 'DISABILITY', label: '장애가 있어요' },
-  { value: 'MULTI_CHILD', label: '다자녀 가정' },
-  { value: 'SEVERE_ILLNESS', label: '중증질환이 있어요' },
-  { value: 'NORTH_KOREAN_DEFECTOR', label: '북한이탈주민' },
-  { value: 'GRANDPARENT_FAMILY', label: '조손가정' },
-];
+const TAG_OPTIONS: { value: SurveyTag; label: string }[] = (
+  [
+    'SINGLE_PARENT',
+    'MULTICULTURAL',
+    'DISABILITY',
+    'MULTI_CHILD',
+    'SEVERE_ILLNESS',
+    'NORTH_KOREAN_DEFECTOR',
+    'GRANDPARENT_FAMILY',
+  ] as SurveyTag[]
+).map((value) => ({ value, label: SURVEY_TAG_LABELS[value] }));
 
-export default function SurveyScreen({ onComplete }: Props) {
+export default function SurveyScreen({ onComplete, initialValues, onCancel }: Props) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
-  const [householdSize, setHouseholdSize] = useState<number | null>(null);
-  const [isBenefitRecipient, setIsBenefitRecipient] = useState(false);
+  const [householdSize, setHouseholdSize] = useState<number | null>(initialValues?.householdSize ?? null);
+  const [isBenefitRecipient, setIsBenefitRecipient] = useState(initialValues?.isBenefitRecipient ?? false);
 
-  const [incomeBracket, setIncomeBracket] = useState<number | null>(null);
-  const [incomeUnknown, setIncomeUnknown] = useState(false);
+  const [incomeBracket, setIncomeBracket] = useState<number | null>(initialValues?.incomePctBracket ?? null);
+  // 기존 응답이 있는데 소득구간이 null 이면 "모르겠어요" 를 골랐던 것. 처음 설문(initialValues 없음)과 구분한다
+  const [incomeUnknown, setIncomeUnknown] = useState(
+    initialValues != null && initialValues.incomePctBracket == null
+  );
 
-  const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus | null>(null);
-  const [housingType, setHousingType] = useState<HousingType | null>(null);
+  const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus | null>(
+    initialValues?.employmentStatus ?? null
+  );
+  const [housingType, setHousingType] = useState<HousingType | null>(initialValues?.housingType ?? null);
 
-  const [tags, setTags] = useState<SurveyTag[]>([]);
+  const [tags, setTags] = useState<SurveyTag[]>(initialValues?.tags ?? []);
 
   const toggleTag = (tag: SurveyTag) => {
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
@@ -127,7 +129,7 @@ export default function SurveyScreen({ onComplete }: Props) {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="지원금 매칭 설문" showBack={step > 1} flat />
+      <ScreenHeader title="지원금 매칭 설문" flat />
       <View style={styles.progressWrap}>
         <ProgressBar progress={step / TOTAL_STEPS} />
         <Text style={styles.stepLabel}>{step} / {TOTAL_STEPS}</Text>
@@ -238,6 +240,8 @@ export default function SurveyScreen({ onComplete }: Props) {
       <View style={styles.footer}>
         {step > 1 ? (
           <Button label="이전" variant="secondary" style={styles.footerBackBtn} onPress={goBack} />
+        ) : onCancel ? (
+          <Button label="취소" variant="secondary" style={styles.footerBackBtn} onPress={onCancel} />
         ) : null}
         <Button
           label={submitting ? '저장 중...' : step < TOTAL_STEPS ? '다음' : '완료'}

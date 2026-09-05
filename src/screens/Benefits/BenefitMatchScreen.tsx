@@ -4,11 +4,19 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
+import Badge from '../../components/Badge';
+import Button from '../../components/Button';
 import { colors, radius, spacing } from '../../constants/colors';
+import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
 import { benefitApi } from '../../services/benefit';
-import type { CategoryMatchResponse, MatchCondition, SubsidyMatchResponse } from '../../types/benefit';
+import type { CategoryMatchResponse, MatchCondition, SubsidyMatchResponse, SurveyResponse } from '../../types/benefit';
 
-export default function BenefitMatchScreen() {
+interface Props {
+  survey: SurveyResponse;
+  onRetake: () => void;
+}
+
+export default function BenefitMatchScreen({ survey, onRetake }: Props) {
   const navigation = useNavigation<any>();
   const [categories, setCategories] = useState<CategoryMatchResponse[] | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -33,9 +41,12 @@ export default function BenefitMatchScreen() {
     return (
       <View style={styles.screen}>
         <ScreenHeader />
-        <View style={styles.centerFill}>
-          <Text style={styles.emptyText}>매칭 결과를 불러오지 못했어요</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+          <InfoCard survey={survey} onRetake={onRetake} />
+          <View style={styles.centerFill}>
+            <Text style={styles.emptyText}>매칭 결과를 불러오지 못했어요</Text>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -55,9 +66,12 @@ export default function BenefitMatchScreen() {
     return (
       <View style={styles.screen}>
         <ScreenHeader />
-        <View style={styles.centerFill}>
-          <Text style={styles.emptyText}>아직 매칭되는 지원금이 없어요</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+          <InfoCard survey={survey} onRetake={onRetake} />
+          <View style={styles.centerFill}>
+            <Text style={styles.emptyText}>아직 매칭되는 지원금이 없어요</Text>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -86,6 +100,7 @@ export default function BenefitMatchScreen() {
       </ScrollView>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <InfoCard survey={survey} onRetake={onRetake} />
         {activeItems.map((item) => (
           <SubsidyCard
             key={item.subsidyId}
@@ -95,6 +110,42 @@ export default function BenefitMatchScreen() {
         ))}
       </ScrollView>
     </View>
+  );
+}
+
+function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () => void }) {
+  const chips: string[] = [];
+  if (survey.householdSize != null) {
+    chips.push(survey.householdSize >= 6 ? '6인 이상 가구' : `${survey.householdSize}인 가구`);
+  }
+  if (survey.incomePctBracket != null) {
+    chips.push(survey.incomePctBracket === 999 ? '소득 150% 초과' : `소득 ${survey.incomePctBracket}% 이하`);
+  }
+  if (survey.isBenefitRecipient) chips.push('기초생활수급자 등');
+  if (survey.employmentStatus) chips.push(EMPLOYMENT_STATUS_LABELS[survey.employmentStatus]);
+  if (survey.housingType) chips.push(HOUSING_TYPE_LABELS[survey.housingType]);
+  survey.tags.forEach((tag) => chips.push(SURVEY_TAG_LABELS[tag]));
+
+  return (
+    <Card style={styles.infoCard}>
+      <View style={styles.infoHeader}>
+        <View style={styles.infoIconBadge}>
+          <Ionicons name="document-text-outline" size={14} color={colors.accent} />
+        </View>
+        <Text style={styles.infoTitle}>내 정보</Text>
+        <Text style={styles.infoHint}>설문 응답 기준</Text>
+      </View>
+      {chips.length > 0 ? (
+        <View style={styles.infoChipRow}>
+          {chips.map((label, idx) => (
+            <Badge key={idx} label={label} tone="primary" />
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.infoEmptyText}>아직 입력한 정보가 없어요</Text>
+      )}
+      <Button label="설문 다시하기" variant="secondary" size="sm" onPress={onRetake} />
+    </Card>
   );
 }
 
@@ -160,6 +211,20 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.white },
   container: { flex: 1 },
   content: { padding: spacing.md, paddingBottom: spacing.xl },
+  infoCard: { gap: spacing.sm, marginBottom: spacing.md },
+  infoHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  infoIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  infoHint: { fontSize: 12, color: colors.textTertiary, marginLeft: 'auto' },
+  infoChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  infoEmptyText: { fontSize: 12, color: colors.textTertiary },
   card: { gap: 6, marginBottom: spacing.md },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
   cardSummary: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
