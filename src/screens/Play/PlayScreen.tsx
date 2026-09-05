@@ -18,6 +18,7 @@ import Button from '../../components/Button';
 import ProgressBar from '../../components/ProgressBar';
 import PuzzleBoard from '../../components/PuzzleBoard';
 import PressableScale from '../../components/PressableScale';
+import { useRiseIn } from '../../hooks/useRiseIn';
 import { colors, radius, spacing } from '../../constants/colors';
 import { PUZZLE_COVERS } from '../../constants/puzzleAssets';
 import { habitApi } from '../../services/habit';
@@ -46,24 +47,7 @@ import { getCategoryIconStyle } from '../../constants/habitStyles';
 //   7) 퍼즐을 다 모으면 기본 Alert 대신 화면 안에서 별이 퍼지는 축하 오버레이가 뜸
 //   8) 잠겨 있던 다음 퍼즐 세트가 풀리는 순간, 그 썸네일만 반짝이며 팝업됨
 //   (새 조각이 보드에 나타나는 등장 애니메이션은 PuzzleBoard 컴포넌트 쪽에 있음)
-
-function useRiseIn(delay: number, trigger: boolean) {
-  const anim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!trigger) return;
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 420,
-      delay,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [trigger]);
-  return {
-    opacity: anim,
-    transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
-  };
-}
+// (useRiseIn은 홈 화면에서도 똑같이 쓰려고 src/hooks/useRiseIn.ts로 뺐다.)
 
 export default function PlayScreen() {
   const navigation = useNavigation<any>();
