@@ -7,8 +7,6 @@ import { colors, radius, spacing } from '../../constants/colors';
 import { useAuth } from '../../contexts/AuthContext';
 import { getSettlementAmount, getSidoName } from './settlementFund';
 
-const PURPLE = '#6C5CE7';
-const PURPLE_DARK = '#4B3FBD';
 const BROWN = '#946200';
 
 const EMERGENCY_FUND = 3_000_000;
@@ -112,14 +110,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    backgroundColor: PURPLE,
+    backgroundColor: colors.primary,
     borderRadius: radius.md,
     padding: spacing.md,
   },
   fundLeft: { gap: 4 },
   fundLabel: { fontSize: 12, color: colors.white },
   regionBadge: {
-    backgroundColor: PURPLE_DARK,
+    backgroundColor: colors.chatAccent,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
@@ -141,9 +139,9 @@ const styles = StyleSheet.create({
   applyLink: {
     fontSize: 13,
     fontWeight: '600',
-    color: PURPLE,
+    color: colors.primary,
     textAlign: 'center',
     textDecorationLine: 'underline',
   },
-  confirmButton: { backgroundColor: PURPLE },
+  confirmButton: { backgroundColor: colors.primary },
 });

@@ -82,6 +82,37 @@ export interface AccountListResponse {
   accounts: AccountItem[];
 }
 
+/** GET /members/me/support-end-forecast 응답 */
+export interface SupportEndForecastResponse {
+  eligible: boolean;
+  forecast: SupportEndForecast | null;
+}
+
+export interface SupportEndForecast {
+  daysUntilSupportEnd: number;
+  monthsUntilSupportEnd: number;
+  monthsUsedForAverage: number;
+  dataAvailable: boolean;
+  incomeExcludingAllowance: number | null;
+  averageExpense: number | null;
+  monthlyShortfall: number | null;
+  currentSavingsTotal: number;
+  savingsRunwayMonths: number | null;
+  reduction: SupportEndReduction | null;
+}
+
+export interface SupportEndReduction {
+  categories: {
+    category: ExpenseCategory;
+    averageAmount: number;
+    reducedAmount: number;
+    monthlySavings: number;
+  }[];
+  totalMonthlySavings: number;
+  totalSavingsByEnd: number;
+  improvedRunwayMonths: number | null;
+}
+
 /** 백엔드 ExpenseCategory 와 같은 값 */
 export type ExpenseCategory =
   | 'HOUSING_UTILITY'

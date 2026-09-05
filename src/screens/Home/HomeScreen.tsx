@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatDday } from '../../utils/today';
 import AssetSummaryCard from './AssetSummaryCard';
 import ExpenseSummaryCard from './ExpenseSummaryCard';
+import SupportEndForecastCard from './SupportEndForecastCard';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -26,6 +27,7 @@ export default function HomeScreen() {
             style={{ backgroundColor: '#FEBB00' }}
           />
         ) : null}
+        <SupportEndForecastCard />
         <AssetSummaryCard />
         <ExpenseSummaryCard />
       </ScrollView>
@@ -36,5 +38,5 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1 },
-  content: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xl },
+  content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl },
 });

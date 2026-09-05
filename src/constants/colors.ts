@@ -16,9 +16,6 @@ export const colors = {
   accent: '#FFC107',
   accentLight: '#FFF6D9',
 
-  // 지출 리포트: 수입·평균 지출·"남음" 상태 강조. AssetSummaryCard 예적금 아이콘과 같은 값
-  purple: '#5A4FCF',
-  purpleLight: '#EEECFB',
 
   // status
   success: '#00C896',
