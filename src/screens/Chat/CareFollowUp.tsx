@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, View , Text } from 'react-native';
+import { Linking, Pressable, StyleSheet, View , Text } from 'react-native';
 import { colors, radius, spacing } from '../../constants/colors';
 import type { CarePolicies, CareSignal } from '../../types/care';
+import TypingIndicator from './TypingIndicator';
 
 export function PolicyCards({ policies, busy, retry }: {
   policies: CarePolicies; busy: boolean; retry: () => void;
@@ -14,9 +15,10 @@ export function PolicyCards({ policies, busy, retry }: {
       await Linking.openURL(url);
     } catch { setLinkError(true); }
   }
-  return <View style={styles.followUp}>
+  if (busy && policies.status !== 'READY') return <TypingIndicator />;
+
+  return <View style={styles.policyGroup}>
     {policies.status === 'PENDING' && <>
-      {busy && <ActivityIndicator color={colors.chatAccent} />}
       <Text style={styles.caption}>관련 정책을 확인하고 있어요.</Text>
       {!busy && <Pressable accessibilityRole="button" onPress={retry}><Text style={styles.action}>정책 확인하기</Text></Pressable>}
     </>}
@@ -45,7 +47,8 @@ export function ReferralOffer({ signal, busy, accept, decline }: {
   signal: CareSignal; busy: boolean; accept: () => void; decline: () => void;
 }) {
   return <View style={styles.followUp}>
-    <View style={styles.card}>
+    <View style={styles.referralCard}>
+      <Text style={styles.alertIcon} accessibilityLabel="주의">🚨</Text>
       <Text style={styles.body}>{signal.recheckedAt
         ? '다시 확인했지만 아직 거래가 확인되지 않았어요. 담당자에게 연결을 요청할까요?'
         : '어려움이 이어지고 있어요. 담당자에게 연결을 요청할까요?'}</Text>
@@ -61,8 +64,15 @@ export function ReferralOffer({ signal, busy, accept, decline }: {
 
 const styles = StyleSheet.create({
   followUp: { marginLeft: spacing.xl + spacing.md + spacing.xs, marginBottom: spacing.md, gap: spacing.sm },
+  policyGroup: { marginLeft: spacing.xl + spacing.md + spacing.xs, marginBottom: spacing.md,
+    padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.track, gap: spacing.md },
   card: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.white,
+    borderWidth: 1, borderColor: colors.border, gap: spacing.sm,
+    shadowColor: colors.chatShadow, shadowOpacity: 0.1, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  referralCard: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.white,
     borderWidth: 1, borderColor: colors.border, gap: spacing.sm },
+  alertIcon: { alignSelf: 'flex-start', fontSize: 24, lineHeight: 30, marginBottom: spacing.xs },
   title: { color: colors.textPrimary, fontSize: 17, lineHeight: 25, fontWeight: '600' },
   body: { color: colors.textPrimary, fontSize: 16, lineHeight: 24 },
   caption: { color: colors.textSecondary, fontSize: 13, lineHeight: 20 },

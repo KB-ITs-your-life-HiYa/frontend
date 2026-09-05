@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View , Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { RootTabParamList } from '../../navigation/RootNavigator';
@@ -38,10 +38,12 @@ export default function CareBanner() {
     <View style={styles.backdrop}>
       <View accessibilityViewIsModal style={styles.popup}>
         <View style={styles.content}>
-          <View style={styles.avatar}><Ionicons name="chatbox-ellipses" size={31} color={colors.white} /></View>
+          <View style={styles.avatar}>
+            <MaterialCommunityIcons name="robot" size={31} color={colors.chatAccent} />
+          </View>
           <View style={styles.copy}>
             <View style={styles.heading}><Text style={styles.title}>자립동행 AI</Text><Text style={styles.time}>방금 전</Text></View>
-            <Text style={styles.message}>{message}</Text>
+            <Text accessibilityLabel={message} style={styles.message}>{message}</Text>
           </View>
           <Pressable accessibilityLabel="알림 닫기" hitSlop={12} style={styles.close} onPress={close}><Ionicons name="close" size={22} color={colors.textTertiary} /></Pressable>
         </View>
