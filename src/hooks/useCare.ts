@@ -5,6 +5,12 @@ import { ApiError } from '../services/api';
 import { careApi } from '../services/care';
 import type { CareSummary } from '../types/care';
 
+interface RunOptions { minimumLoadingMs?: number; }
+
+function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function useCare() {
   const { logout } = useAuth();
   const [summary, setSummary] = useState<CareSummary | null>(null);
@@ -13,16 +19,21 @@ export function useCare() {
   const pending = useRef(false);
   const focused = useRef(false);
 
-  const run = useCallback(async (operation: () => Promise<CareSummary>) => {
+  const run = useCallback(async (operation: () => Promise<CareSummary>, options: RunOptions = {}) => {
     if (pending.current) return false;
     pending.current = true;
     setBusy(true);
     setError(null);
+    const startedAt = Date.now();
     try {
       const data = await operation();
+      const remaining = (options.minimumLoadingMs ?? 0) - (Date.now() - startedAt);
+      if (remaining > 0) await wait(remaining);
       if (focused.current) setSummary(data);
       return true;
     } catch (e) {
+      const remaining = (options.minimumLoadingMs ?? 0) - (Date.now() - startedAt);
+      if (remaining > 0) await wait(remaining);
       if (e instanceof ApiError && e.status === 401) await logout();
       if (focused.current) setError(e instanceof ApiError ? e.message : '서버 연결을 확인한 뒤 다시 시도해 주세요.');
       return false;
