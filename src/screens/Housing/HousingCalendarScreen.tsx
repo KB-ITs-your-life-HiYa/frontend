@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
@@ -8,14 +8,26 @@ import Badge from '../../components/Badge';
 import SectionHeader from '../../components/SectionHeader';
 import ProgressBar from '../../components/ProgressBar';
 import { colors, radius, spacing } from '../../constants/colors';
-import { scheduleItems } from './scheduleData';
+import { ApiError } from '../../services/api';
+import { housingApi } from '../../services/housing';
+import { HousingNoticeSummary } from '../../types/housing';
 import ScheduleItemRow from './ScheduleItemRow';
+import {
+  getDotsForDate,
+  noticesOnDate,
+  parseLocalDate,
+  visibleDots,
+} from './calendarDots';
+import { buildScheduleEvents, upcomingScheduleEvents } from './scheduleEvents';
 import { TODAY, diffDays, formatMonthDay, isSameDay } from '../../utils/today';
 
 // 독립 지원 — 주거 캘린더 화면
-// 달력 그리드는 실제 연/월 계산 기반
-// TODO: 청년 주택 API 연동으로 일정·공고 하드코딩 값 교체
+// 공고·상시·일정은 GET /housing/calendar. 체크리스트는 아직 로컬.
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 웹에서 한글 단어 중간 줄바꿈 방지. StyleSheet 에는 wordBreak 타입이 없어 분리한다 */
+const keepWord: TextStyle =
+  Platform.OS === 'web' ? ({ wordBreak: 'keep-all' } as TextStyle) : {};
 
 type DayCell = { date: Date; day: number; inCurrentMonth: boolean };
 
@@ -35,33 +47,6 @@ function buildMonthMatrix(year: number, month: number): DayCell[][] {
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   return weeks;
 }
-
-// 모집 중인 지원 공고 — 접수 시작일/마감일을 달력에 '시작'/'끝'으로 표시
-const RECRUITING_NOTICES = [
-  {
-    id: '1',
-    title: '청년 매입임대주택 지원 공고',
-    start: new Date(2026, 8, 8),
-    end: new Date(2026, 8, 23),
-  },
-];
-
-function getNoticeMark(date: Date): 'start' | 'end' | null {
-  for (const notice of RECRUITING_NOTICES) {
-    if (isSameDay(date, notice.start)) return 'start';
-    if (isSameDay(date, notice.end)) return 'end';
-  }
-  return null;
-}
-
-// 상시 모집: 마감일 없이 항상 접수 가능한 지원 제도
-const rollingPrograms = [
-  {
-    id: '1',
-    title: '청년월세 특별지원',
-    meta: '거주지 관할 주민센터 상시접수',
-  },
-];
 
 // 체크리스트 템플릿: 템플릿당 최대 1개까지만 추가할 수 있어요
 type TemplateId = 'moveIn' | 'moving' | 'houseHunting';
@@ -125,6 +110,56 @@ export default function HousingCalendarScreen() {
   };
   const isViewingCurrentMonth = viewDate.getFullYear() === TODAY.getFullYear() && viewDate.getMonth() === TODAY.getMonth();
 
+  const [notices, setNotices] = useState<HousingNoticeSummary[]>([]);
+  const [ongoingNotices, setOngoingNotices] = useState<HousingNoticeSummary[]>([]);
+  const [regionMessage, setRegionMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await housingApi.getCalendar({
+          year: viewDate.getFullYear(),
+          month: viewDate.getMonth() + 1,
+        });
+        if (cancelled) return;
+        setNotices(res.notices);
+        setOngoingNotices(res.ongoingNotices);
+        setRegionMessage(res.message);
+      } catch (e) {
+        if (cancelled) return;
+        setNotices([]);
+        setOngoingNotices([]);
+        setRegionMessage(null);
+        setError(
+          e instanceof ApiError ? e.message : '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요'
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewDate]);
+
+  // 달을 넘기면 선택일이 그 달 밖이 되지 않게 맞춘다
+  useEffect(() => {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    if (selectedDate.getFullYear() === y && selectedDate.getMonth() === m) return;
+    if (y === TODAY.getFullYear() && m === TODAY.getMonth()) {
+      setSelectedDate(TODAY);
+    } else {
+      setSelectedDate(new Date(y, m, 1));
+    }
+  }, [viewDate, selectedDate]);
+
   const [checklists, setChecklists] = useState<TemplateId[]>(['moveIn']);
   const [itemsByTemplate, setItemsByTemplate] = useState<Record<TemplateId, ChecklistItem[]>>({
     moveIn: CHECKLIST_TEMPLATES.moveIn.items,
@@ -132,6 +167,19 @@ export default function HousingCalendarScreen() {
     houseHunting: CHECKLIST_TEMPLATES.houseHunting.items,
   });
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  const selectedDayNotices = useMemo(
+    () => noticesOnDate(selectedDate, notices),
+    [notices, selectedDate]
+  );
+
+  const selectedDateLabel = `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`;
+
+  const previewSchedule = useMemo(() => {
+    const merged = new Map<number, HousingNoticeSummary>();
+    for (const n of [...notices, ...ongoingNotices]) merged.set(n.id, n);
+    return upcomingScheduleEvents(buildScheduleEvents([...merged.values()])).slice(0, 2);
+  }, [notices, ongoingNotices]);
 
   const handleAddChecklist = (id: TemplateId) => {
     setChecklists((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -169,6 +217,13 @@ export default function HousingCalendarScreen() {
           </View>
         ) : null}
 
+        {regionMessage ? (
+          <View style={styles.messageBanner}>
+            <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
+            <Text style={styles.messageBannerText}>{regionMessage}</Text>
+          </View>
+        ) : null}
+
         <Card style={styles.calendarCard}>
           <View style={styles.weekRow}>
             {WEEKDAYS.map((w, i) => (
@@ -189,7 +244,8 @@ export default function HousingCalendarScreen() {
               {week.map((cell, di) => {
                 const isToday = cell.inCurrentMonth && isSameDay(cell.date, TODAY);
                 const isSelected = cell.inCurrentMonth && isSameDay(cell.date, selectedDate);
-                const mark = cell.inCurrentMonth ? getNoticeMark(cell.date) : null;
+                const dots = cell.inCurrentMonth ? getDotsForDate(cell.date, notices) : [];
+                const { shown, more } = visibleDots(dots);
                 return (
                   <Pressable
                     key={di}
@@ -214,70 +270,148 @@ export default function HousingCalendarScreen() {
                       >
                         {cell.day}
                       </Text>
-                      {mark ? (
-                        <View style={[styles.dayMark, mark === 'start' ? styles.dayMarkStart : styles.dayMarkEnd]}>
-                          <Text style={styles.dayMarkText}>{mark === 'start' ? '시' : '끝'}</Text>
-                        </View>
-                      ) : null}
+                    </View>
+                    <View style={styles.dotsRow}>
+                      {shown.map((dot, idx) => (
+                        <View
+                          key={`${dot.noticeId}-${dot.kind}-${idx}`}
+                          style={[
+                            styles.dot,
+                            dot.kind === 'start'
+                              ? { backgroundColor: dot.color }
+                              : { borderColor: dot.color, borderWidth: 1.6 },
+                          ]}
+                        />
+                      ))}
+                      {more > 0 ? <Text style={styles.dotMore}>+{more}</Text> : null}
                     </View>
                   </Pressable>
                 );
               })}
             </View>
           ))}
+          <View style={styles.legendRow}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, styles.legendDotFilled]} />
+              <Text style={styles.legendText}>접수 시작</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, styles.legendDotHollow]} />
+              <Text style={styles.legendText}>접수 마감</Text>
+            </View>
+            <Text style={styles.legendHint}>같은 색 = 같은 공고</Text>
+          </View>
         </Card>
 
-        <SectionHeader title="모집 중인 지원 공고" />
-        {RECRUITING_NOTICES.map((notice) => {
-          const total = diffDays(notice.end, notice.start) || 1;
-          const elapsed = Math.min(Math.max(diffDays(TODAY, notice.start), 0), total);
-          const progress = elapsed / total;
-          const daysLeft = diffDays(notice.end, TODAY);
-          return (
-            <Card key={notice.id} style={styles.noticeCard}>
-              <View style={styles.noticeTopRow}>
-                <Text style={styles.noticeTitle}>{notice.title}</Text>
-                <Text style={styles.noticeDday}>{daysLeft >= 0 ? `마감 D-${daysLeft}` : '마감'}</Text>
-              </View>
-              <View style={styles.noticeTrack}>
-                <View style={[styles.noticeTrackFill, { width: `${Math.round(progress * 100)}%` }]} />
-              </View>
-              <View style={styles.noticeDatesRow}>
-                <Text style={styles.noticeDateText}>{formatMonthDay(notice.start)} 시작</Text>
-                <Text style={styles.noticeDateText}>{formatMonthDay(notice.end)} 마감</Text>
-              </View>
-            </Card>
-          );
-        })}
-
-        <SectionHeader title="상시 모집" />
-        {rollingPrograms.map((p) => (
-          <Card key={p.id} style={styles.rollingCard}>
-            <View style={styles.rollingIcon}>
-              <Ionicons name="infinite" size={20} color={colors.white} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rollingTitle}>{p.title}</Text>
-              <Text style={styles.rollingMeta}>{p.meta}</Text>
-            </View>
-            <Badge label="상시" tone="gray" />
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : error ? (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.emptyText}>{error}</Text>
           </Card>
-        ))}
+        ) : (
+          <>
+            <SectionHeader title={`${selectedDateLabel} 공고`} />
+            {selectedDayNotices.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <Text style={styles.emptyText}>이 날짜에 접수 중인 공고가 없어요</Text>
+              </Card>
+            ) : (
+              selectedDayNotices.map((notice) => {
+                const start = parseLocalDate(notice.beginDate);
+                const end = parseLocalDate(notice.endDate);
+                const total = diffDays(end, start) || 1;
+                const elapsed = Math.min(Math.max(diffDays(TODAY, start), 0), total);
+                const progress = elapsed / total;
+                const daysLeft = diffDays(end, TODAY);
+                return (
+                  <Pressable
+                    key={notice.id}
+                    onPress={() => navigation.navigate('HousingNoticeDetail', { noticeId: notice.id })}
+                  >
+                    <Card style={styles.noticeCard}>
+                      <View style={styles.noticeTopRow}>
+                        <Text style={[styles.noticeTitle, keepWord]}>{notice.title}</Text>
+                        <Text style={styles.noticeDday}>{daysLeft >= 0 ? `마감 D-${daysLeft}` : '마감'}</Text>
+                      </View>
+                      <Text style={[styles.noticeMeta, keepWord]}>
+                        {notice.institution} · {notice.supplyType}
+                      </Text>
+                      <View style={styles.noticeTrack}>
+                        <View style={[styles.noticeTrackFill, { width: `${Math.round(progress * 100)}%` }]} />
+                      </View>
+                      <View style={styles.noticeDatesRow}>
+                        <Text style={styles.noticeDateText}>{formatMonthDay(start)} 시작</Text>
+                        <Text style={styles.noticeDateText}>{formatMonthDay(end)} 마감</Text>
+                      </View>
+                    </Card>
+                  </Pressable>
+                );
+              })
+            )}
+
+            <SectionHeader title="상시 모집" />
+            {ongoingNotices.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <Text style={styles.emptyText}>상시 모집 공고가 없어요</Text>
+              </Card>
+            ) : (
+              ongoingNotices.map((notice) => {
+                const start = parseLocalDate(notice.beginDate);
+                const end = parseLocalDate(notice.endDate);
+                return (
+                  <Pressable
+                    key={notice.id}
+                    onPress={() => navigation.navigate('HousingNoticeDetail', { noticeId: notice.id })}
+                  >
+                    <Card style={styles.rollingCard}>
+                      <View style={styles.rollingIcon}>
+                        <Ionicons name="infinite" size={20} color={colors.white} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.rollingTitle, keepWord]}>{notice.title}</Text>
+                        <Text style={[styles.rollingMeta, keepWord]}>
+                          {notice.institution} · {notice.supplyType}
+                        </Text>
+                        <Text style={styles.rollingPeriod}>
+                          {formatMonthDay(start)} ~ {formatMonthDay(end)} 접수
+                        </Text>
+                      </View>
+                      <Badge label="상시" tone="gray" />
+                    </Card>
+                  </Pressable>
+                );
+              })
+            )}
+          </>
+        )}
 
         <SectionHeader
           title="주거지원 일정"
           actionLabel="전체보기→"
           onActionPress={() => navigation.navigate('ScheduleList')}
         />
-        <Text style={styles.autoCheckCaption}>내 정보를 기반으로 지원 대상 충족 여부를 자동으로 확인했어요</Text>
-        <Card style={styles.scheduleListCard}>
-          {scheduleItems.slice(0, 2).map((item, index) => (
-            <React.Fragment key={item.id}>
-              <ScheduleItemRow item={item} />
-              {index < 1 ? <View style={styles.divider} /> : null}
-            </React.Fragment>
-          ))}
-        </Card>
+        {previewSchedule.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.emptyText}>다가오는 일정이 없어요</Text>
+          </Card>
+        ) : (
+          <Card style={styles.scheduleListCard}>
+            {previewSchedule.map((item, index) => (
+              <React.Fragment key={item.id}>
+                <ScheduleItemRow
+                  item={item}
+                  onPress={() =>
+                    navigation.navigate('HousingNoticeDetail', { noticeId: item.noticeId })
+                  }
+                />
+                {index < previewSchedule.length - 1 ? <View style={styles.divider} /> : null}
+              </React.Fragment>
+            ))}
+          </Card>
+        )}
 
         <View style={styles.checklistSectionHeader}>
           <Text style={styles.checklistSectionTitle}>체크리스트</Text>
@@ -384,36 +518,69 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   todayButtonText: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  calendarCard: { gap: 4 },
+  messageBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+  },
+  messageBannerText: { flex: 1, fontSize: 12, lineHeight: 18, color: colors.primary, fontWeight: '600' },
+  loadingWrap: { paddingVertical: spacing.lg, alignItems: 'center' },
+  calendarCard: { gap: 4, paddingBottom: spacing.sm },
   weekRow: { flexDirection: 'row' },
   weekday: { flex: 1, textAlign: 'center', fontSize: 12, color: colors.textTertiary, paddingVertical: 6 },
   sunday: { color: colors.danger },
   saturday: { color: colors.primary },
-  dayCellWrap: { flex: 1, alignItems: 'center', paddingVertical: 3 },
-  dayCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  dayMark: {
-    position: 'absolute',
-    bottom: -3,
-    right: -3,
-    minWidth: 14,
-    height: 14,
-    borderRadius: 7,
+  dayCellWrap: { flex: 1, alignItems: 'center', paddingVertical: 2, minHeight: 48 },
+  dayCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  dotsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 2,
+    gap: 3,
+    minHeight: 10,
+    marginTop: 3,
   },
-  dayMarkStart: { backgroundColor: colors.primary },
-  dayMarkEnd: { backgroundColor: colors.danger },
-  dayMarkText: { fontSize: 8, fontWeight: '800', color: colors.white },
-  noticeCard: { gap: spacing.sm },
-  noticeTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  noticeTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginRight: spacing.sm },
-  noticeDday: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  noticeTrack: { height: 6, borderRadius: radius.full, backgroundColor: colors.track, overflow: 'hidden' },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'transparent',
+  },
+  dotMore: { fontSize: 9, fontWeight: '700', color: colors.textTertiary, marginLeft: 1 },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    paddingTop: spacing.sm,
+    marginTop: 2,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendDot: { width: 7, height: 7, borderRadius: 4 },
+  legendDotFilled: { backgroundColor: colors.textSecondary },
+  legendDotHollow: { borderWidth: 1.6, borderColor: colors.textSecondary, backgroundColor: 'transparent' },
+  legendText: { fontSize: 11, color: colors.textSecondary },
+  legendHint: { fontSize: 11, color: colors.textTertiary },
+  noticeCard: { gap: spacing.md },
+  noticeTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
+  noticeTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  noticeDday: { fontSize: 12, fontWeight: '700', color: colors.primary, marginTop: 2 },
+  noticeMeta: { fontSize: 12, color: colors.textTertiary, lineHeight: 18 },
+  noticeTrack: { height: 6, borderRadius: radius.full, backgroundColor: colors.track, overflow: 'hidden', marginTop: 2 },
   noticeTrackFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.primary },
-  noticeDatesRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  noticeDateText: { fontSize: 11, color: colors.textTertiary },
-  rollingCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  noticeDatesRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+  noticeDateText: { fontSize: 11, color: colors.textTertiary, lineHeight: 16 },
+  rollingCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   rollingIcon: {
     width: 36,
     height: 36,
@@ -421,16 +588,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
-  rollingTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  rollingMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+  rollingTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  rollingMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 4, lineHeight: 18 },
+  rollingPeriod: { fontSize: 12, color: colors.textSecondary, marginTop: 6, fontWeight: '600', lineHeight: 18 },
   today: { backgroundColor: colors.accent },
   selected: { backgroundColor: colors.primaryLight },
   dayText: { fontSize: 13, color: colors.textPrimary },
   dayTextDimmed: { color: colors.textTertiary, opacity: 0.5 },
   dayTextToday: { color: colors.white, fontWeight: '700' },
   dayTextSelected: { color: colors.primary, fontWeight: '700' },
-  autoCheckCaption: { fontSize: 12, color: colors.textTertiary, marginTop: -4 },
   scheduleListCard: { paddingVertical: 4 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   checklistSectionHeader: {
