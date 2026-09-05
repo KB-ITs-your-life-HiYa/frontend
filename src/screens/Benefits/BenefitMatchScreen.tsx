@@ -4,8 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
-import Badge from '../../components/Badge';
-import Button from '../../components/Button';
 import SectionHeader from '../../components/SectionHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
@@ -87,6 +85,7 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.tabScroll}
           contentContainerStyle={styles.tabBarContent}
         >
           {categories.map((cat) => {
@@ -131,22 +130,23 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
   return (
     <Card style={styles.infoCard}>
       <View style={styles.infoHeader}>
-        <View style={styles.infoIconBadge}>
-          <Ionicons name="document-text-outline" size={14} color={colors.accent} />
-        </View>
         <Text style={styles.infoTitle}>내 정보</Text>
         <Text style={styles.infoHint}>설문 응답 기준</Text>
       </View>
       {chips.length > 0 ? (
         <View style={styles.infoChipRow}>
           {chips.map((label, idx) => (
-            <Badge key={idx} label={label} tone="primary" />
+            <View key={idx} style={styles.infoChip}>
+              <Text style={styles.infoChipText}>{label}</Text>
+            </View>
           ))}
         </View>
       ) : (
         <Text style={styles.infoEmptyText}>아직 입력한 정보가 없어요</Text>
       )}
-      <Button label="설문 다시하기" variant="secondary" size="sm" onPress={onRetake} />
+      <Pressable style={styles.retakeButton} onPress={onRetake}>
+        <Text style={styles.retakeButtonText}>설문 다시하기</Text>
+      </Pressable>
     </Card>
   );
 }
@@ -200,6 +200,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 13, color: colors.textTertiary },
+  tabScroll: { marginTop: spacing.md },
   tabBarContent: { gap: spacing.sm, paddingBottom: spacing.md },
   tab: {
     paddingHorizontal: spacing.md,
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.white,
   },
   tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
@@ -215,19 +216,25 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.md, paddingBottom: spacing.xl },
   infoCard: { gap: spacing.sm, marginBottom: spacing.md },
-  infoHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  infoIconBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.sm,
-    backgroundColor: colors.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  infoHeader: { flexDirection: 'row', alignItems: 'center' },
   infoTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   infoHint: { fontSize: 12, color: colors.textTertiary, marginLeft: 'auto' },
   infoChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  infoChip: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+  },
+  infoChipText: { fontSize: 12, fontWeight: '500', color: colors.primary },
   infoEmptyText: { fontSize: 12, color: colors.textTertiary },
+  retakeButton: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.graySoft,
+  },
+  retakeButtonText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   card: { gap: 6, marginBottom: spacing.md },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
   cardSummary: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
