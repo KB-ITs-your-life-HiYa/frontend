@@ -16,6 +16,7 @@ import TodoListScreen from '../screens/Home/TodoListScreen';
 import AccountListScreen from '../screens/Home/AccountListScreen';
 import NotificationsScreen from '../screens/Home/NotificationsScreen';
 import ExpenseReportScreen from '../screens/Home/ExpenseReportScreen';
+import SupportEndForecastScreen from '../screens/Home/SupportEndForecastScreen';
 import TopicCategoryScreen from '../screens/Play/TopicCategoryScreen';
 import TopicDetailScreen from '../screens/Play/TopicDetailScreen';
 import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
@@ -47,6 +48,7 @@ export type RootStackParamList = {
   AccountList: { type: AccountType };
   Notifications: undefined;
   ExpenseReport: undefined;
+  SupportEndForecastDetail: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -116,6 +118,7 @@ export default function RootNavigator() {
                 <Stack.Screen name="AccountList" component={AccountListScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
                 <Stack.Screen name="ExpenseReport" component={ExpenseReportScreen} />
+                <Stack.Screen name="SupportEndForecastDetail" component={SupportEndForecastScreen} />
                 <Stack.Screen name="TopicCategory" component={TopicCategoryScreen} />
                 <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
                 <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />

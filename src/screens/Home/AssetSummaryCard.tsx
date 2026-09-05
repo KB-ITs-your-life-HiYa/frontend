@@ -62,7 +62,7 @@ export default function AssetSummaryCard() {
       <AssetRow symbol="₩" iconBg={colors.accent} label="계좌·현금" amount={summary.depositTotal} type="DEPOSIT" />
 
       <View style={styles.divider} />
-      <AssetRow symbol="=" iconBg="#5A4FCF" label="예적금" amount={summary.savingsTotal} type="SAVINGS" />
+      <AssetRow symbol="=" iconBg={colors.primary} label="예적금" amount={summary.savingsTotal} type="SAVINGS" />
     </Card>
   );
 }

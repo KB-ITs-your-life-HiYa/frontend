@@ -114,7 +114,7 @@ function SummaryCard({ data }: { data: ExpenseReportResponse }) {
       </View>
       <View style={styles.summaryRow}>
         <Text style={styles.summaryLabel}>수입</Text>
-        <MoneyText amount={data.summary.totalIncome} variant="large" color={colors.purple} />
+        <MoneyText amount={data.summary.totalIncome} variant="medium" />
       </View>
 
       <Pressable
@@ -200,7 +200,7 @@ function TrendCard({ data }: { data: ExpenseReportResponse }) {
                 width={barWidth}
                 height={baselineY - y}
                 rx={4}
-                fill={isActive ? colors.purple : colors.purpleLight}
+                fill={isActive ? colors.primary : colors.primaryLight}
               />
               <SvgText
                 x={x + barWidth / 2}
@@ -239,7 +239,7 @@ function TrendCard({ data }: { data: ExpenseReportResponse }) {
       <View style={styles.divider} />
       <View style={styles.summaryRow}>
         <Text style={styles.summaryLabel}>월 평균지출</Text>
-        <MoneyText amount={averageExpense} variant="medium" color={colors.purple} />
+        <MoneyText amount={averageExpense} variant="medium" color={colors.primary} />
       </View>
     </Card>
   );
@@ -253,12 +253,12 @@ function computeCategoryBar(currentAmount: number, previousAmount: number): { pr
   if (currentAmount >= previousAmount) {
     return { progress: 1, color: colors.danger };
   }
-  return { progress: currentAmount / previousAmount, color: colors.purple };
+  return { progress: currentAmount / previousAmount, color: colors.primary };
 }
 
 function CategoryCard({ item }: { item: ExpenseCategoryBreakdown }) {
   const over = item.difference > 0;
-  const accentColor = over ? colors.danger : colors.purple;
+  const accentColor = over ? colors.danger : colors.primary;
   const diffLabel =
     item.difference === 0 ? null : `${formatWon(Math.abs(item.difference))} ${over ? '초과' : '남음'}`;
   const bar = computeCategoryBar(item.currentAmount, item.previousAmount);
