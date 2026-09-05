@@ -20,6 +20,7 @@ import SupportEndForecastScreen from '../screens/Home/SupportEndForecastScreen';
 import TopicCategoryScreen from '../screens/Play/TopicCategoryScreen';
 import TopicDetailScreen from '../screens/Play/TopicDetailScreen';
 import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
+import HousingNoticeDetailScreen from '../screens/Housing/HousingNoticeDetailScreen';
 import CareScreen from '../screens/Care/CareScreen';
 
 import { ActivityIndicator, View } from 'react-native';
@@ -45,6 +46,7 @@ export type RootStackParamList = {
   TopicCategory: { categoryId: number; title: string };
   TopicDetail: { topicId: number };
   ScheduleList: undefined;
+  HousingNoticeDetail: { noticeId: number };
   AccountList: { type: AccountType };
   Notifications: undefined;
   ExpenseReport: undefined;
@@ -122,6 +124,7 @@ export default function RootNavigator() {
                 <Stack.Screen name="TopicCategory" component={TopicCategoryScreen} />
                 <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
                 <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />
+                <Stack.Screen name="HousingNoticeDetail" component={HousingNoticeDetailScreen} />
               </>
           ) : (
               <>
