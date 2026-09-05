@@ -61,6 +61,13 @@ export interface AccountSummary {
 
 export type AccountType = 'DEPOSIT' | 'SAVINGS';
 
+/** GET /members/me/expense-summary 응답 */
+export interface ExpenseSummary {
+  currentMonthTotal: number;
+  lastMonthSamePeriodTotal: number;
+  difference: number;
+}
+
 /** GET /members/me/accounts?type=... 응답의 계좌 항목 */
 export interface AccountItem {
   bankName: string;
@@ -73,4 +80,36 @@ export interface AccountListResponse {
   accountType: AccountType;
   totalBalance: number;
   accounts: AccountItem[];
+}
+
+/** 백엔드 ExpenseCategory 와 같은 값 */
+export type ExpenseCategory =
+  | 'HOUSING_UTILITY'
+  | 'FOOD'
+  | 'TRANSPORT'
+  | 'LIVING_MEDICAL'
+  | 'LEISURE_SHOPPING'
+  | 'SAVINGS';
+
+/** GET /members/me/expense-report?month=YYYY-MM 응답의 카테고리 항목 */
+export interface ExpenseCategoryBreakdown {
+  category: ExpenseCategory;
+  currentAmount: number;
+  previousAmount: number;
+  difference: number;
+  progressRatio: number; // 0~100. 이번 달 카테고리 중 최댓값 기준 비율
+  budget: number | null; // 항상 null. 카테고리별 예산 기능이 생기면 채워진다
+}
+
+/** GET /members/me/expense-report?month=YYYY-MM 응답 */
+export interface ExpenseReportResponse {
+  month: string; // YYYY-MM
+  summary: { totalExpense: number; totalIncome: number };
+  monthlyTrend: {
+    months: { month: string; totalExpense: number }[]; // 최근 3개월, 오래된 순
+    averageExpense: number;
+  };
+  categories: ExpenseCategoryBreakdown[];
+  navigation: { hasPrevious: boolean; hasNext: boolean };
+  monthlyBudget: number | null; // 항상 null. 예산 기능이 생기면 채워진다
 }
