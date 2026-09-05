@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
@@ -7,12 +8,8 @@ import { colors, radius, spacing } from '../../constants/colors';
 import { benefitApi } from '../../services/benefit';
 import type { CategoryMatchResponse, MatchCondition, SubsidyMatchResponse } from '../../types/benefit';
 
-interface Props {
-  // TODO: 상세보기 페이지가 생기면 navigation 으로 교체
-  onOpenDetail?: (item: SubsidyMatchResponse) => void;
-}
-
-export default function BenefitMatchScreen({ onOpenDetail }: Props) {
+export default function BenefitMatchScreen() {
+  const navigation = useNavigation<any>();
   const [categories, setCategories] = useState<CategoryMatchResponse[] | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -90,7 +87,11 @@ export default function BenefitMatchScreen({ onOpenDetail }: Props) {
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {activeItems.map((item) => (
-          <SubsidyCard key={item.subsidyId} item={item} onPress={() => onOpenDetail?.(item)} />
+          <SubsidyCard
+            key={item.subsidyId}
+            item={item}
+            onPress={() => navigation.navigate('BenefitDetail', { item })}
+          />
         ))}
       </ScrollView>
     </View>

@@ -21,12 +21,14 @@ import TopicCategoryScreen from '../screens/Play/TopicCategoryScreen';
 import TopicDetailScreen from '../screens/Play/TopicDetailScreen';
 import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
 import HousingNoticeDetailScreen from '../screens/Housing/HousingNoticeDetailScreen';
+import BenefitDetailScreen from '../screens/Benefits/BenefitDetailScreen';
 import CareScreen from '../screens/Care/CareScreen';
 
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import { AccountType } from '../types';
+import type { SubsidyMatchResponse } from '../types/benefit';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -47,6 +49,7 @@ export type RootStackParamList = {
   TopicDetail: { topicId: number };
   ScheduleList: undefined;
   HousingNoticeDetail: { noticeId: number };
+  BenefitDetail: { item: SubsidyMatchResponse };
   AccountList: { type: AccountType };
   Notifications: undefined;
   ExpenseReport: undefined;
@@ -125,6 +128,7 @@ export default function RootNavigator() {
                 <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
                 <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />
                 <Stack.Screen name="HousingNoticeDetail" component={HousingNoticeDetailScreen} />
+                <Stack.Screen name="BenefitDetail" component={BenefitDetailScreen} />
               </>
           ) : (
               <>
