@@ -8,6 +8,7 @@ import { colors, spacing } from '../../constants/colors';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDday } from '../../utils/today';
 import AssetSummaryCard from './AssetSummaryCard';
+import ExpenseSummaryCard from './ExpenseSummaryCard';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -26,6 +27,7 @@ export default function HomeScreen() {
           />
         ) : null}
         <AssetSummaryCard />
+        <ExpenseSummaryCard />
       </ScrollView>
     </View>
   );
