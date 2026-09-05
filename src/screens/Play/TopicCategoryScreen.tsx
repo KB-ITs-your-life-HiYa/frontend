@@ -8,15 +8,11 @@ import Button from '../../components/Button';
 import { colors, radius, spacing } from '../../constants/colors';
 import { habitApi } from '../../services/habit';
 import { HabitTopicSummary } from '../../types/habit';
+import { getCategoryIconStyle } from '../../constants/habitStyles';
 
 // 놀이 탭 "금융 상식 쑥쑥" 카테고리 상세 — 카테고리 누르면
 // 그 안의 세부 토픽 목록을 보여줌 GET /habit/topics/{categoryId}/subtopics
-const TOPIC_STYLES: { bg: string; iconColor: string }[] = [
-  { bg: colors.blueSoft, iconColor: colors.primary },
-  { bg: colors.yellowSoft, iconColor: colors.warning },
-  { bg: colors.accentLight, iconColor: '#B78103' },
-  { bg: colors.greenSoft, iconColor: colors.success },
-];
+// 아이콘 색은 카테고리 하나당 하나로 고정(getCategoryIconStyle)해서 카드마다 색이 제각각이지 않게 통일했다.
 
 export default function TopicCategoryScreen() {
   const navigation = useNavigation<any>();
@@ -45,6 +41,8 @@ export default function TopicCategoryScreen() {
 
   useEffect(load, [load]);
 
+  const iconStyle = getCategoryIconStyle(categoryId);
+
   return (
     <View style={styles.screen}>
       <ScreenHeader title={title} showBack showProfile={false} />
@@ -60,20 +58,17 @@ export default function TopicCategoryScreen() {
           </Card>
         ) : (
           <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
-            {topics.map((t, i) => {
-              const style = TOPIC_STYLES[i % TOPIC_STYLES.length];
-              return (
-                <Pressable key={t.id} onPress={() => navigation.navigate('TopicDetail', { topicId: t.id })}>
-                  <Card style={styles.topicCard}>
-                    <View style={[styles.topicIcon, { backgroundColor: style.bg }]}>
-                      <MaterialCommunityIcons name={t.icon as any} size={22} color={style.iconColor} />
-                    </View>
-                    <Text style={styles.topicTitle}>{t.title}</Text>
-                    <Text style={styles.topicSubtitle}>{t.subtitle}</Text>
-                  </Card>
-                </Pressable>
-              );
-            })}
+            {topics.map((t) => (
+              <Pressable key={t.id} onPress={() => navigation.navigate('TopicDetail', { topicId: t.id })}>
+                <Card style={styles.topicCard}>
+                  <View style={[styles.topicIcon, { backgroundColor: iconStyle.bg }]}>
+                    <MaterialCommunityIcons name={t.icon as any} size={22} color={iconStyle.iconColor} />
+                  </View>
+                  <Text style={styles.topicTitle}>{t.title}</Text>
+                  <Text style={styles.topicSubtitle}>{t.subtitle}</Text>
+                </Card>
+              </Pressable>
+            ))}
           </ScrollView>
         )}
       </View>
