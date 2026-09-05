@@ -56,3 +56,35 @@ export interface HousingNoticeDetail {
   superseded: boolean;
   units: HousingNoticeUnit[];
 }
+
+/** 체크리스트 종류. 백엔드 ChecklistTemplateType 과 같은 값 */
+export type ChecklistTemplateType = 'HOUSE_HUNTING' | 'MOVE_IN' | 'MOVING';
+
+/** GET/POST /members/me/housing/checklists 항목 */
+export interface HousingChecklistItem {
+  id: number;
+  content: string;
+  dueDate: string | null; // YYYY-MM-DD
+  memo: string | null;
+  done: boolean;
+  sortOrder: number;
+}
+
+/** GET/POST /members/me/housing/checklists 응답 */
+export interface HousingChecklist {
+  id: number;
+  templateType: ChecklistTemplateType;
+  title: string;
+  doneCount: number;
+  totalCount: number;
+  progress: number;
+  items: HousingChecklistItem[];
+}
+
+export type UpdateHousingChecklistItemRequest = {
+  content?: string;
+  dueDate?: string | null;
+  memo?: string | null;
+  done?: boolean;
+  sortOrder?: number;
+};
