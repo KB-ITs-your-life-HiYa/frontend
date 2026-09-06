@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../constants/colors';
+import AiAvatar from '../../components/AiAvatar';
 
 const DOT_DURATION_MS = 900;
 
@@ -20,9 +20,7 @@ export default function TypingIndicator() {
   }, [progress]);
 
   return <View style={styles.row} accessibilityLabel="답변을 준비하고 있어요">
-    <View style={styles.avatar}>
-      <MaterialCommunityIcons name="robot" size={24} color={colors.chatAccent} />
-    </View>
+    <AiAvatar variant="message" />
     <View style={styles.column}>
       <Text style={styles.name}>자립동행 AI</Text>
       <View style={styles.bubble}>
@@ -50,8 +48,6 @@ export default function TypingIndicator() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md, gap: spacing.md },
-  avatar: { width: 42, height: 42, borderRadius: radius.full, backgroundColor: colors.chatAvatar,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primaryLight },
   column: { alignItems: 'flex-start' },
   name: { fontSize: 14, lineHeight: 20, color: colors.textSecondary,
     marginLeft: spacing.xs, marginBottom: spacing.xs },
