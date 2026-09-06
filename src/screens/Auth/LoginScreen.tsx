@@ -17,6 +17,8 @@ import { ApiError } from '../../services/api';
 
 // 개발용 시드 계정. R__seed_01_member.sql 과 같은 값이다.
 const DEMO_PASSWORD = 'demo1234';
+// 상담사(담당자) 포털 개발용 계정. R__seed_01_member.sql 과 같은 값이다.
+const COUNSELOR_PASSWORD = 'counselor1234';
 
 export default function LoginScreen() {
     const insets = useSafeAreaInsets();
@@ -50,13 +52,13 @@ export default function LoginScreen() {
 
     // 개발용. 이메일·비밀번호를 채우고 바로 로그인한다.
     // 입력칸도 같이 채워서 어떤 계정으로 들어갔는지 보이게 한다.
-    async function loginAs(demoEmail: string) {
+    async function loginAs(demoEmail: string, demoPassword: string = DEMO_PASSWORD) {
         setEmail(demoEmail);
-        setPassword(DEMO_PASSWORD);
+        setPassword(demoPassword);
         setError(null);
         setSubmitting(true);
         try {
-            await login(demoEmail, DEMO_PASSWORD);
+            await login(demoEmail, demoPassword);
         } catch (e) {
             setError(
                 e instanceof ApiError
@@ -146,6 +148,13 @@ export default function LoginScreen() {
                                     onPress={() => loginAs('demo2@fledge.dev')}
                                 />
                             </View>
+                            <Button
+                                label="상담사 계정으로 로그인"
+                                variant="secondary"
+                                size="sm"
+                                style={styles.counselorDemoButton}
+                                onPress={() => loginAs('counselor@fledge.local', COUNSELOR_PASSWORD)}
+                            />
                         </View>
                     )}
                 </View>
@@ -178,6 +187,7 @@ const styles = StyleSheet.create({
     demoLabel: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.sm, textAlign: 'center' },
     demoRow: { flexDirection: 'row', gap: spacing.sm },
     demoButton: { flex: 1 },
+    counselorDemoButton: { marginTop: spacing.sm },
     loading: { height: 52, alignItems: 'center', justifyContent: 'center' },
     disabled: { opacity: 0.4 },
 });

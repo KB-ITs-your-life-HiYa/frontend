@@ -24,6 +24,7 @@ import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
 import HousingNoticeDetailScreen from '../screens/Housing/HousingNoticeDetailScreen';
 import BenefitDetailScreen from '../screens/Benefits/BenefitDetailScreen';
 import CareScreen from '../screens/Care/CareScreen';
+import CounselorPortalScreen from '../screens/Counselor/CounselorPortalScreen';
 
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,6 +44,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
   MainTabs: undefined;
+  CounselorPortal: undefined;
   MyPage: undefined;
   Care: undefined;
   TodoList: undefined;
@@ -140,6 +142,10 @@ export default function RootNavigator() {
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {member ? (
+              member.role === 'COUNSELOR' ? (
+                // 상담사 계정은 청년용 탭 화면 대신, 사이드바가 있는 PC 웹 포털 화면 하나로 보낸다.
+                <Stack.Screen name="CounselorPortal" component={CounselorPortalScreen} />
+              ) : (
               <>
                 <Stack.Screen name="MainTabs" component={MainTabs} />
                 <Stack.Screen name="MyPage" component={MyPageScreen} />
@@ -155,6 +161,7 @@ export default function RootNavigator() {
                 <Stack.Screen name="HousingNoticeDetail" component={HousingNoticeDetailScreen} />
                 <Stack.Screen name="BenefitDetail" component={BenefitDetailScreen} />
               </>
+              )
           ) : (
               <>
                 <Stack.Screen name="Onboarding" component={WelcomeScreen} />
