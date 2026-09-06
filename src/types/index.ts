@@ -129,7 +129,7 @@ export interface ExpenseCategoryBreakdown {
   previousAmount: number;
   difference: number;
   progressRatio: number; // 0~100. 이번 달 카테고리 중 최댓값 기준 비율
-  budget: number | null; // 항상 null. 카테고리별 예산 기능이 생기면 채워진다
+  budget: number | null; // 그 카테고리에 예산을 설정하지 않았으면 null
 }
 
 /** GET /members/me/expense-report?month=YYYY-MM 응답 */
@@ -142,5 +142,19 @@ export interface ExpenseReportResponse {
   };
   categories: ExpenseCategoryBreakdown[];
   navigation: { hasPrevious: boolean; hasNext: boolean };
-  monthlyBudget: number | null; // 항상 null. 예산 기능이 생기면 채워진다
+  monthlyBudget: number | null; // 이번 달 총예산을 설정하지 않았으면 null
+}
+
+/** GET/PUT /members/me/budget 응답의 카테고리 항목 */
+export interface BudgetCategoryItem {
+  category: ExpenseCategory;
+  amount: number | null; // 그 카테고리에 예산을 설정하지 않았으면 null
+  lastMonthAmount: number; // 조회한 달의 전달 사용액. 예산 미설정 카테고리의 참고값
+}
+
+/** GET/PUT /members/me/budget 응답. 6개 카테고리를 항상 전부 내려준다 */
+export interface BudgetResponse {
+  month: string; // YYYY-MM
+  totalAmount: number | null; // 이번 달 총예산을 설정하지 않았으면 null
+  categories: BudgetCategoryItem[];
 }

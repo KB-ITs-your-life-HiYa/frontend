@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
@@ -10,6 +10,7 @@ import { colors, radius, spacing } from '../../constants/colors';
 import { api, ApiError } from '../../services/api';
 import { ExpenseCategoryBreakdown, ExpenseReportResponse } from '../../types';
 import { formatWon } from '../../utils/money';
+import BudgetModal from './BudgetModal';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './expenseCategoryMeta';
 
 function currentMonthParam() {
@@ -32,30 +33,24 @@ export default function ExpenseReportScreen() {
   const [data, setData] = useState<ExpenseReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [budgetModalVisible, setBudgetModalVisible] = useState(false);
+
+  const loadReport = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get<ExpenseReportResponse>(`/members/me/expense-report?month=${month}`);
+      setData(res);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요');
+    } finally {
+      setLoading(false);
+    }
+  }, [month]);
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await api.get<ExpenseReportResponse>(`/members/me/expense-report?month=${month}`);
-        if (!cancelled) setData(res);
-      } catch (e) {
-        if (!cancelled) {
-          setError(
-            e instanceof ApiError ? e.message : '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요'
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [month]);
+    loadReport();
+  }, [loadReport]);
 
   const hasPrevious = data?.navigation.hasPrevious ?? false;
   const hasNext = data?.navigation.hasNext ?? false;
@@ -90,7 +85,7 @@ export default function ExpenseReportScreen() {
           <Text style={styles.error}>{error ?? '지출 리포트를 불러오지 못했습니다'}</Text>
         ) : (
           <>
-            <SummaryCard data={data} />
+            <SummaryCard data={data} onOpenBudget={() => setBudgetModalVisible(true)} />
             <TrendCard data={data} />
             <Text style={styles.sectionTitle}>카테고리별 지출</Text>
             <View style={styles.categoryList}>
@@ -101,11 +96,18 @@ export default function ExpenseReportScreen() {
           </>
         )}
       </ScrollView>
+
+      <BudgetModal
+        visible={budgetModalVisible}
+        month={month}
+        onClose={() => setBudgetModalVisible(false)}
+        onSaved={loadReport}
+      />
     </View>
   );
 }
 
-function SummaryCard({ data }: { data: ExpenseReportResponse }) {
+function SummaryCard({ data, onOpenBudget }: { data: ExpenseReportResponse; onOpenBudget: () => void }) {
   return (
     <Card>
       <View style={styles.summaryRow}>
@@ -117,12 +119,7 @@ function SummaryCard({ data }: { data: ExpenseReportResponse }) {
         <MoneyText amount={data.summary.totalIncome} variant="medium" />
       </View>
 
-      <Pressable
-        style={styles.budgetRow}
-        onPress={() => {
-          // TODO: 월 예산 설정 화면 연결
-        }}
-      >
+      <Pressable style={styles.budgetRow} onPress={onOpenBudget}>
         <View style={styles.budgetLeft}>
           <Ionicons name="wallet-outline" size={16} color={colors.textSecondary} />
           <Text style={styles.budgetLabel}>월 예산</Text>
@@ -130,8 +127,9 @@ function SummaryCard({ data }: { data: ExpenseReportResponse }) {
         {data.monthlyBudget == null ? (
           <Text style={styles.budgetAction}>설정하기 {'>'}</Text>
         ) : (
-          // TODO: 예산이 생기면 "설정한 예산 대비 사용액" 형태로 교체
-          <MoneyText amount={data.monthlyBudget} variant="medium" />
+          <Text style={[styles.budgetResult, { color: budgetCompareColor(data.summary.totalExpense, data.monthlyBudget) }]}>
+            {budgetCompareLabel(data.summary.totalExpense, data.monthlyBudget)}
+          </Text>
         )}
       </Pressable>
     </Card>
@@ -146,7 +144,10 @@ const PLOT_HEIGHT = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom;
 
 function TrendCard({ data }: { data: ExpenseReportResponse }) {
   const { months, averageExpense } = data.monthlyTrend;
-  const rawMax = Math.max(1, ...months.map((m) => m.totalExpense), averageExpense);
+  const hasBudget = data.monthlyBudget != null;
+  const referenceValue = data.monthlyBudget ?? averageExpense;
+  const referenceLabel = hasBudget ? '예산' : '평균';
+  const rawMax = Math.max(1, ...months.map((m) => m.totalExpense), referenceValue);
   const axisMax = Math.ceil(rawMax / 100000) * 100000 || 100000;
 
   const baselineY = CHART_MARGIN.top + PLOT_HEIGHT;
@@ -219,34 +220,52 @@ function TrendCard({ data }: { data: ExpenseReportResponse }) {
         <Line
           x1={CHART_MARGIN.left}
           x2={CHART_WIDTH - CHART_MARGIN.right}
-          y1={valueToY(averageExpense)}
-          y2={valueToY(averageExpense)}
+          y1={valueToY(referenceValue)}
+          y2={valueToY(referenceValue)}
           stroke={colors.textTertiary}
           strokeWidth={1}
           strokeDasharray="4 3"
         />
         <SvgText
           x={CHART_WIDTH - CHART_MARGIN.right}
-          y={valueToY(averageExpense) - 4}
+          y={valueToY(referenceValue) - 4}
           fontSize={10}
           fill={colors.textTertiary}
           textAnchor="end"
         >
-          평균
+          {referenceLabel}
         </SvgText>
       </Svg>
 
       <View style={styles.divider} />
       <View style={styles.summaryRow}>
         <Text style={styles.summaryLabel}>월 평균지출</Text>
-        <MoneyText amount={averageExpense} variant="medium" color={colors.primary} />
+        <MoneyText amount={averageExpense} variant="medium" />
       </View>
+      {hasBudget ? (
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>월 예산</Text>
+          <MoneyText amount={data.monthlyBudget as number} variant="medium" />
+        </View>
+      ) : null}
     </Card>
   );
 }
 
-// 진행바 전용 계산. 카테고리 중 최댓값이 아니라 "지난달 사용액"을 기준(100%)으로 이번 달 사용액 비율을 그린다.
-function computeCategoryBar(currentAmount: number, previousAmount: number): { progress: number; color: string } {
+// 예산/지난달 비교에서 공통으로 쓰는 "초과"·"남음" 문구와 색.
+// 지난달 대비 쪽(diffLabel)은 차액이 0이면 문구를 아예 숨기는 기존 동작을 유지하고,
+// 예산 대비 쪽은 요청에 따라 0이어도 "0원 남음"을 그대로 보여준다 — 그래서 별도 함수로 둔다.
+function budgetCompareColor(current: number, budget: number): string {
+  return current > budget ? colors.danger : colors.primary;
+}
+
+function budgetCompareLabel(current: number, budget: number): string {
+  const diff = Math.abs(current - budget);
+  return `${formatWon(diff)} ${current > budget ? '초과' : '남음'}`;
+}
+
+// 진행바 계산 — 지난달 사용액 기준. 카테고리 중 최댓값이 아니라 "지난달 사용액"을 기준(100%)으로 이번 달 사용액 비율을 그린다.
+function computeCategoryBarByPrevious(currentAmount: number, previousAmount: number): { progress: number; color: string } {
   if (previousAmount <= 0) {
     return currentAmount > 0 ? { progress: 1, color: colors.danger } : { progress: 0, color: colors.track };
   }
@@ -256,12 +275,31 @@ function computeCategoryBar(currentAmount: number, previousAmount: number): { pr
   return { progress: currentAmount / previousAmount, color: colors.primary };
 }
 
+// 진행바 계산 — 예산 기준. 전체 길이가 예산 100% 다. 예산을 넘으면 꽉 찬 빨간 막대.
+function computeCategoryBarByBudget(currentAmount: number, budget: number): { progress: number; color: string } {
+  if (currentAmount >= budget) {
+    return { progress: 1, color: colors.danger };
+  }
+  return { progress: budget <= 0 ? 0 : currentAmount / budget, color: colors.primary };
+}
+
 function CategoryCard({ item }: { item: ExpenseCategoryBreakdown }) {
-  const over = item.difference > 0;
-  const accentColor = over ? colors.danger : colors.primary;
-  const diffLabel =
-    item.difference === 0 ? null : `${formatWon(Math.abs(item.difference))} ${over ? '초과' : '남음'}`;
-  const bar = computeCategoryBar(item.currentAmount, item.previousAmount);
+  const hasBudget = item.budget != null;
+
+  const diffLabel = hasBudget
+      ? budgetCompareLabel(item.currentAmount, item.budget as number)
+      : item.difference === 0
+          ? null
+          : `${formatWon(Math.abs(item.difference))} ${item.difference > 0 ? '초과' : '남음'}`;
+  const accentColor = hasBudget
+      ? budgetCompareColor(item.currentAmount, item.budget as number)
+      : item.difference > 0
+          ? colors.danger
+          : colors.primary;
+
+  const bar = hasBudget
+      ? computeCategoryBarByBudget(item.currentAmount, item.budget as number)
+      : computeCategoryBarByPrevious(item.currentAmount, item.previousAmount);
 
   return (
     <Pressable
@@ -282,7 +320,11 @@ function CategoryCard({ item }: { item: ExpenseCategoryBreakdown }) {
 
         <View style={styles.categoryFooterRow}>
           <Text style={styles.categoryUsed}>{formatWon(item.currentAmount)} 사용</Text>
-          <Text style={styles.categoryPrev}>지난달 {formatWon(item.previousAmount)}</Text>
+          {hasBudget ? (
+            <Text style={styles.categoryPrev}>예산 {formatWon(item.budget as number)}</Text>
+          ) : (
+            <Text style={styles.categoryPrev}>지난달 {formatWon(item.previousAmount)}</Text>
+          )}
         </View>
       </Card>
     </Pressable>
@@ -317,6 +359,7 @@ const styles = StyleSheet.create({
   budgetLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   budgetLabel: { fontSize: 13, color: colors.textSecondary },
   budgetAction: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  budgetResult: { fontSize: 13, fontWeight: '700' },
 
   cardTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
