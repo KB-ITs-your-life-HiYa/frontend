@@ -17,6 +17,14 @@ import { TODAY } from '../../utils/today';
 //   2) 그 지점(절벽)에 배터리 아이콘을 두어 "여기서 바닥난다"는 걸 표시하고
 //   3) 그 뒤로는 점선만 흐릿하게 이어져서 "이후엔 아무것도 없다"는 느낌을 준다
 //   4) 아래에 "언제(몇 개월 후, 몇 년 몇 월경)" 끊기는지 구체적으로 적어준다
+//
+// 이 카드 자체는 daysUntilSupportEnd가 D-365 이하로 떨어져야만(data.eligible) 나타나는,
+// 평소엔 안 보이던 "특별 모드" 화면이다. 처음엔 흰 카드에 노란 배지·테두리 정도만 얹었는데
+// "더 강조됐으면 좋겠다"는 피드백을 받아서, 아예 카드 배경 자체를 옅은 노란 톤으로 바꿨다 —
+// 스크롤하다 훑어만 봐도 "이 카드는 다르다"는 게 바로 티가 나게. 색은 D-day 배너와 같은
+// 노란 톤(colors.accent)을 써서 "D-day 카운트다운과 관련된 특별한 상태"라는 걸 같은 시각
+// 언어로 이어지게 했다. 홈 화면 맨 위 브랜드 히어로 카드(HomeHeroCard)도 이 모드일 때는
+// 문구가 "D-365 모드에 들어갔어요"로 바뀌어서, 위아래 두 카드가 같은 이야기를 한다.
 const RUNWAY_MAX = 12;
 
 type RunwayTier = 'safe' | 'caution' | 'risk';
@@ -153,7 +161,11 @@ export default function SupportEndForecastCard() {
 
   return (
     <PressableScale onPress={() => navigation.navigate('SupportEndForecastDetail')}>
-      <Card>
+      <Card style={styles.modeCard}>
+        <View style={styles.modeBadge}>
+          <Ionicons name="hourglass" size={12} color={colors.white} />
+          <Text style={styles.modeBadgeText}>D-365 모드 진입</Text>
+        </View>
         <Text style={styles.label}>수당이 끝나면 평균지출액 대비</Text>
 
         <View style={styles.shortfallRow}>
@@ -189,6 +201,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: spacing.sm,
   },
+  // 배경을 아예 옅은 노란 톤으로 바꿔서 다른 흰 카드들 사이에서 "지금 특별한 모드"라는 게
+  // 스크롤하다 훑어만 봐도 바로 티가 나게 했다. 배지도 옅은 배경 위에 묻히지 않도록
+  // accentLight 대신 진한 accent를 채워 넣고 글자는 흰색으로 바꿨다.
+  modeCard: { backgroundColor: colors.accentLight, borderWidth: 1, borderColor: colors.accent },
+  modeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: colors.accent,
+    borderRadius: radius.full,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  modeBadgeText: { fontSize: 11, fontWeight: '800', color: colors.white },
   sentence: { flexShrink: 1 },
   sentenceSmall: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },

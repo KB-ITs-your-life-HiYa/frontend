@@ -9,7 +9,18 @@ import { colors, radius, spacing } from '../../constants/colors';
 // 마스코트 쪽에는 1) 둥실+살짝 좌우로 흔들리는 움직임, 2) 은은하게 맥동하는 배경 글로우,
 // 3) 밖으로 퍼졌다 사라지는 링 이펙트(물결처럼), 4) 뜰 때 옅어지고 내려올 때 진해지는 그림자,
 // 5) 반짝이 세 개가 서로 다른 타이밍에 깜빡이는 것까지 겹쳐서 좀 더 화사하게 만들었다.
-export default function HomeHeroCard() {
+//
+// isD365Mode가 true면(자립수당 종료까지 D-365 이하로 들어와서 SupportEndForecastCard가
+// 뜨는 것과 같은 조건) 문구를 "D-365 모드에 들어갔어요"로 바꾸고 작은 노란 칩을 하나 띄운다.
+// 카드 배경색 자체(브랜드 블루)는 그대로 두고 문구와 칩만 바꾼 이유는, 이 카드가 앱 전체에서
+// "우리 서비스가 어떤 곳인지" 보여주는 브랜드 정체성 자리라서 상태에 따라 색까지 바뀌면
+// 오히려 브랜드 일관성이 흔들리기 때문 — 대신 D-365 전용 카드(SupportEndForecastCard)
+// 쪽은 배경색 자체를 노란 톤으로 바꿔서 "지금부터는 다른 모드"라는 걸 확실히 보여준다.
+interface Props {
+  isD365Mode?: boolean;
+}
+
+export default function HomeHeroCard({ isD365Mode = false }: Props) {
   const float = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
   const ripple = useRef(new Animated.Value(0)).current;
@@ -100,8 +111,20 @@ export default function HomeHeroCard() {
   return (
     <View style={styles.card}>
       <View style={styles.textCol}>
-        <Text style={styles.headline}>오늘도 자립동행이{'\n'}함께하고 있어요</Text>
-        <Text style={styles.sub}>보호종료 이전부터 자립수당 종료 이후까지,{'\n'}끊기지 않는 재무 플랜</Text>
+        {isD365Mode ? (
+          <>
+            <View style={styles.modeChip}>
+              <Text style={styles.modeChipText}>D-365 MODE</Text>
+            </View>
+            <Text style={styles.headline}>자립동행과 함께{'\n'}D-365 모드에 들어갔어요</Text>
+            <Text style={styles.sub}>지금부터는 지출·예적금을 더 촘촘하게{'\n'}챙겨드릴게요</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.headline}>오늘도 자립동행이{'\n'}함께하고 있어요</Text>
+            <Text style={styles.sub}>보호종료 이전부터 자립수당 종료 이후까지,{'\n'}끊기지 않는 재무 플랜</Text>
+          </>
+        )}
       </View>
       <View style={styles.mascotWrap}>
         <Animated.View pointerEvents="none" style={[styles.ring, rippleStyle]} />
@@ -138,6 +161,15 @@ const styles = StyleSheet.create({
   textCol: { flex: 1, gap: 6 },
   headline: { fontSize: 18, fontWeight: '800', color: colors.white, lineHeight: 24 },
   sub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 17 },
+  modeChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accent,
+    borderRadius: radius.full,
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+    marginBottom: 2,
+  },
+  modeChipText: { fontSize: 11, fontWeight: '800', color: colors.white, letterSpacing: 0.3 },
   mascotWrap: { width: 84, height: 84, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm },
   ring: {
     position: 'absolute',

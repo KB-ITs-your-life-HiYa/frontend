@@ -12,17 +12,27 @@ import AssetSummaryCard from './AssetSummaryCard';
 import ExpenseSummaryCard from './ExpenseSummaryCard';
 import SupportEndForecastCard from './SupportEndForecastCard';
 
+// D-365 모드: 자립수당 종료까지 D-365 이하로 들어오면(백엔드 SupportEndForecastService의
+// ELIGIBLE_WITHIN_DAYS=365 와 같은 기준) SupportEndForecastCard가 나타나는 것과 같은 조건.
+// 그 카드는 자기 데이터를 스스로 불러오지만, 히어로 카드 문구를 바꾸는 데는 굳이 그 API를
+// 다시 부르지 않고 이미 갖고 있는 member.daysUntilSupportEnd로 같은 기준을 재사용한다.
+function isD365Mode(daysUntilSupportEnd: number | null | undefined) {
+  return daysUntilSupportEnd != null && daysUntilSupportEnd <= 365;
+}
+
 // 홈 탭. 카드(수당 종료 예측/자산/지출)마다 자기 데이터를 알아서 불러와 그리기 때문에
 // 화면 전체를 가리는 로딩 스피너가 없다. 그 대신 화면에 들어오는 순간 위에서부터
 // 순서대로 살짝 떠오르며 나타나서(useRiseIn) 첫인상이 덜 밋밋하게 느껴지게 했다.
 // 각 카드 안의 숫자·막대 애니메이션은 카드 컴포넌트 자체에 들어있다.
 //
 // 맨 위 브랜드 히어로 카드(HomeHeroCard)로 색을 한 번 보여주고, D-day 배너 → 기존 지표
-// 카드들 → 맨 아래 오늘의 놀이 미리보기까지 배치했다.
+// 카드들 → 맨 아래 오늘의 놀이 미리보기까지 배치했다. D-365 모드에 들어오면 히어로 카드의
+// 문구가 바뀌고, 아래 SupportEndForecastCard도 노란 톤으로 눈에 띄게 바뀐다.
 // (AI 안심 지수 히어로 카드 / 자립정착금 배분 진입점은 이번 라운드에서 다시 뺐다 — CareStatusHero.tsx,
 // SettlementFundEntryCard.tsx 파일 자체는 남겨뒀으니 나중에 다시 붙이고 싶으면 import만 되살리면 된다.)
 export default function HomeScreen() {
   const { member } = useAuth();
+  const d365Mode = isD365Mode(member?.daysUntilSupportEnd);
 
   const heroRise = useRiseIn(0, true);
   const ddayRise = useRiseIn(70, true);
@@ -37,7 +47,7 @@ export default function HomeScreen() {
       <CareBanner />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Animated.View style={heroRise}>
-          <HomeHeroCard />
+          <HomeHeroCard isD365Mode={d365Mode} />
         </Animated.View>
         {member?.daysUntilSupportEnd != null ? (
           <Animated.View style={ddayRise}>
