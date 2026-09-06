@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import Button from '../../components/Button';
-import Card from '../../components/Card';
 import CenterModal from '../../components/CenterModal';
 import MoneyText from '../../components/MoneyText';
 import { colors, radius, spacing } from '../../constants/colors';
@@ -20,9 +21,19 @@ interface Props {
 
 export default function SettlementFundModal({ visible, onClose }: Props) {
   const { member } = useAuth();
+  const navigation = useNavigation();
   const settlementAmount = getSettlementAmount(member?.homeRegionCode);
   const sidoName = getSidoName(member?.homeRegionCode);
   const housingFund = settlementAmount - EMERGENCY_FUND - INITIAL_SETUP_FUND;
+
+  const goToHousing = () => {
+    onClose();
+    // 이 모달은 탭 안(홈 화면)과 탭 밖(알림 화면) 양쪽에서 열려서, 어느 쪽에서 호출해도
+    // 안전하게 동작하도록 루트 스택 화면 이름으로 중첩 이동한다. RootStackParamList 는
+    // MainTabs 를 파라미터 없는 화면으로만 선언하고 있어 nested screen 이동은 타입이 안 맞는다.
+    const nav = navigation as unknown as { navigate: (name: string, params?: object) => void };
+    nav.navigate('MainTabs', { screen: 'Housing' });
+  };
 
   return (
     <CenterModal visible={visible} onClose={onClose} contentStyle={styles.content}>
@@ -39,54 +50,53 @@ export default function SettlementFundModal({ visible, onClose }: Props) {
         </View>
       </View>
 
-      <View style={styles.itemsWrap}>
-        <Card style={styles.itemsCard}>
-          <FundItem label="비상금" amount={EMERGENCY_FUND} desc="예상 못 한 일 대비" />
+      <View style={styles.itemsSection}>
+        <Text style={styles.itemsTitle}>추천 배분</Text>
+        <View>
+          <FundItem icon="shield-outline" label="비상금" amount={EMERGENCY_FUND} desc="예상 못 한 일 대비" />
           <View style={styles.itemDivider} />
-          <FundItem label="초기 정착비" amount={INITIAL_SETUP_FUND} desc="이사비, 가전·가구, 생필품 등 구매" />
+          <FundItem icon="briefcase-outline" label="초기 정착비" amount={INITIAL_SETUP_FUND} desc="이사비, 가전·가구, 생필품 등 구매" />
           <View style={styles.itemDivider} />
-          <FundItem label="주거 마련" amount={housingFund} />
-        </Card>
+          <FundItem icon="home-outline" label="주거 마련" amount={housingFund} desc="장기적인 주거 준비를 위한 자금" />
+        </View>
       </View>
 
       <View style={styles.tipBox}>
-        <Text style={styles.tipTitle}>공공임대를 이용하면 달라져요</Text>
-        <Text style={styles.tipBody}>
-          LH 전세임대는 보증금이 100만원이라 주거 마련에 드는 돈이 크게 줄어요.
-        </Text>
-        <Pressable
-          style={styles.tipLinkWrap}
-          onPress={() => {
-            // TODO: 공공임대 안내 화면 연결
-          }}
-        >
-          <Text style={styles.tipLink}>공공임대 알아보기 {'>'}</Text>
+        <Text style={styles.tipTitle}>공공임대로 주거비 부담을 줄여보세요</Text>
+        <Text style={styles.tipBody}>내게 맞는 공공임대주택 공고를 확인해보세요.</Text>
+        <Pressable style={styles.tipLinkWrap} onPress={goToHousing}>
+          <Text style={styles.tipLink}>공공임대 공고 보기 {'>'}</Text>
         </Pressable>
       </View>
 
       <Text style={styles.footnote}>복지부 2024년 기준 · 실제 금액은 다를 수 있어요</Text>
-
-      <Pressable
-        onPress={() => {
-          // TODO: 자립정착금 신청 안내로 이동. 외부 링크/앱 내 화면은 추후 결정
-        }}
-      >
-        <Text style={styles.applyLink}>아직 자립정착금을 신청하지 않았다면?</Text>
-      </Pressable>
 
       <Button label="확인" onPress={onClose} style={styles.confirmButton} />
     </CenterModal>
   );
 }
 
-function FundItem({ label, amount, desc }: { label: string; amount: number; desc?: string }) {
+function FundItem({
+  icon,
+  label,
+  amount,
+  desc,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  amount: number;
+  desc: string;
+}) {
   return (
     <View style={styles.itemRow}>
-      <View style={styles.itemHeadRow}>
-        <Text style={styles.itemLabel}>{label}</Text>
-        <MoneyText amount={amount} variant="medium" />
+      <View style={styles.itemIconCircle}>
+        <Ionicons name={icon} size={20} color={colors.primary} />
       </View>
-      {desc ? <Text style={styles.itemDesc}>{desc}</Text> : null}
+      <View style={styles.itemMid}>
+        <Text style={styles.itemLabel}>{label}</Text>
+        <Text style={styles.itemDesc}>{desc}</Text>
+      </View>
+      <MoneyText amount={amount} variant="medium" />
     </View>
   );
 }
@@ -117,10 +127,18 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   regionBadgeText: { fontSize: 12, fontWeight: '700', color: colors.white },
-  itemsWrap: { backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.sm },
-  itemsCard: { gap: 0, padding: spacing.sm },
-  itemRow: { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: 4 },
-  itemHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  itemsSection: { gap: spacing.sm, paddingHorizontal: spacing.md },
+  itemsTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  itemIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemMid: { flex: 1, gap: 2 },
   itemLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   itemDesc: { fontSize: 12, color: colors.textTertiary },
   itemDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
@@ -130,12 +148,5 @@ const styles = StyleSheet.create({
   tipLinkWrap: { alignSelf: 'flex-end', marginTop: 2 },
   tipLink: { fontSize: 12, fontWeight: '700', color: BROWN },
   footnote: { fontSize: 11, color: colors.textTertiary, textAlign: 'center' },
-  applyLink: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primary,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-  },
   confirmButton: { backgroundColor: colors.primary },
 });
