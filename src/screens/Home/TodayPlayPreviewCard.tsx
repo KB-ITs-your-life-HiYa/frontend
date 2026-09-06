@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { RootTabParamList } from '../../navigation/RootNavigator';
 import Card from '../../components/Card';
@@ -13,25 +13,35 @@ import { HabitTodayQuiz } from '../../types/habit';
 // 홈 화면 맨 아래 "오늘의 퀴즈" 티저. 퍼즐 진행률 대신 오늘 퀴즈를 풀었는지/안 풀었는지에만
 // 집중해서, 눌렀을 때 할 일이 명확한 CTA로 만들었다. 실제 정답 선택은 여기서 하지 않고
 // 항상 놀이 탭으로 이동시켜서 상호작용은 그쪽에서만 일어나게 한다.
+//
+// 처음엔 마운트될 때 한 번만 불러왔는데, 그러면 놀이 탭에서 퀴즈를 풀고 홈 탭으로 돌아와도
+// 앱을 새로고침하기 전까진 "풀기 전" 상태로 남아있는 문제가 있었다. useCare 훅이 케어 배너를
+// 화면에 들어올 때마다(useFocusEffect) 다시 불러오는 것과 같은 방식으로 바꿔서, 홈 탭으로
+// 돌아오는 순간 자동으로 최신 상태를 다시 불러오게 했다.
 export default function TodayPlayPreviewCard() {
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const [quiz, setQuiz] = useState<HabitTodayQuiz | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    habitApi
-      .getTodayQuiz()
-      .then((q) => {
-        if (!cancelled) setQuiz(q);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      habitApi
+        .getTodayQuiz()
+        .then((q) => {
+          if (!cancelled) {
+            setQuiz(q);
+            setError(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setError(true);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   if (error || !quiz) return null;
 
