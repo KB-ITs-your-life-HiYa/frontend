@@ -7,15 +7,23 @@ interface Props {
   onPress?: () => void;
   variant?: 'primary' | 'secondary';
   size?: 'md' | 'sm';
+  disabled?: boolean;
   style?: ViewStyle;
 }
 
-export default function Button({ label, onPress, variant = 'primary', size = 'md', style }: Props) {
+export default function Button({ label, onPress, variant = 'primary', size = 'md', disabled = false, style }: Props) {
   const isPrimary = variant === 'primary';
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.button, size === 'sm' ? styles.sm : null, isPrimary ? styles.primary : styles.secondary, style]}
+      disabled={disabled}
+      style={[
+        styles.button,
+        size === 'sm' ? styles.sm : null,
+        isPrimary ? styles.primary : styles.secondary,
+        disabled ? styles.disabled : null,
+        style,
+      ]}
     >
       <Text
         style={[
@@ -42,6 +50,9 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: colors.primaryLight,
+  },
+  disabled: {
+    opacity: 0.45,
   },
   label: {
     fontSize: 16,
