@@ -35,10 +35,15 @@ export interface ChatMessage {
 /** 자격 단계. 백엔드 EligibilityTier 와 같은 값 */
 export type EligibilityTier = 'SELF_RELIANCE' | 'YOUTH' | 'GENERAL';
 
+/** 로그인 계정 종류. 백엔드 Member.role 과 같은 값.
+ *  YOUTH = 자립준비청년 본인(모바일 앱), COUNSELOR = 담당 상담사(PC 웹 포털) */
+export type MemberRole = 'YOUTH' | 'COUNSELOR';
+
 /** GET /members/me 응답. 로그인 응답 안의 member 와 같은 모양 */
 export interface Member {
   memberId: number;
   email: string;
+  role: MemberRole;
   age: number;
   tier: EligibilityTier;
   tierLabel: string;
