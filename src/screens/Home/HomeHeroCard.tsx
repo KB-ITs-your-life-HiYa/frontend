@@ -11,11 +11,10 @@ import { colors, radius, spacing } from '../../constants/colors';
 // 5) 반짝이 세 개가 서로 다른 타이밍에 깜빡이는 것까지 겹쳐서 좀 더 화사하게 만들었다.
 //
 // isD365Mode가 true면(자립수당 종료까지 D-365 이하로 들어와서 SupportEndForecastCard가
-// 뜨는 것과 같은 조건) 문구를 "D-365 모드에 들어갔어요"로 바꾸고 작은 노란 칩을 하나 띄운다.
-// 카드 배경색 자체(브랜드 블루)는 그대로 두고 문구와 칩만 바꾼 이유는, 이 카드가 앱 전체에서
-// "우리 서비스가 어떤 곳인지" 보여주는 브랜드 정체성 자리라서 상태에 따라 색까지 바뀌면
-// 오히려 브랜드 일관성이 흔들리기 때문 — 대신 D-365 전용 카드(SupportEndForecastCard)
-// 쪽은 배경색 자체를 노란 톤으로 바꿔서 "지금부터는 다른 모드"라는 걸 확실히 보여준다.
+// 뜨는 것과 같은 조건) 문구가 "D-365 모드에 들어갔어요"로 바뀌고, 흰 칩이 하나 뜨고,
+// 배경색도 평소의 브랜드 블루 대신 주황(colors.warning)으로 바뀐다 — "더 강조해달라"는
+// 요청을 받아서, 문구만 바꾸는 대신 색까지 확실히 달라지게 했다. 아래 SupportEndForecastCard도
+// 같은 주황 톤을 테두리·배지에 써서 두 카드가 "지금은 D-365 모드"라는 같은 이야기를 한다.
 interface Props {
   isD365Mode?: boolean;
 }
@@ -109,15 +108,15 @@ export default function HomeHeroCard({ isD365Mode = false }: Props) {
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isD365Mode && styles.cardD365]}>
       <View style={styles.textCol}>
         {isD365Mode ? (
           <>
             <View style={styles.modeChip}>
               <Text style={styles.modeChipText}>D-365 MODE</Text>
             </View>
-            <Text style={styles.headline}>자립동행과 함께{'\n'}D-365 모드에 들어갔어요</Text>
-            <Text style={styles.sub}>지금부터는 지출·예적금을 더 촘촘하게{'\n'}챙겨드릴게요</Text>
+            <Text style={[styles.headline, styles.headlineD365]}>자립동행과 함께{'\n'}D-365 모드에 들어갔어요</Text>
+            <Text style={[styles.sub, styles.subD365]}>지금부터는 지출·예적금을 더 촘촘하게{'\n'}챙겨드릴게요</Text>
           </>
         ) : (
           <>
@@ -158,18 +157,23 @@ const styles = StyleSheet.create({
     paddingRight: spacing.lg,
     overflow: 'hidden',
   },
+  cardD365: { backgroundColor: colors.warning },
   textCol: { flex: 1, gap: 6 },
+  // 평소(파랑 배경)엔 흰 텍스트, D-365 모드(주황 배경)일 땐 짙은 네이비 톤 텍스트 —
+  // 배경색이 바뀌는 데 맞춰 각각 대비가 잘 나오는 색으로 따로 지정했다.
   headline: { fontSize: 18, fontWeight: '800', color: colors.white, lineHeight: 24 },
+  headlineD365: { color: 'rgba(0, 32, 83, 0.68)' },
   sub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 17 },
+  subD365: { color: 'rgba(0, 32, 83, 0.68)' },
   modeChip: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.accent,
+    backgroundColor: colors.white,
     borderRadius: radius.full,
     paddingVertical: 3,
     paddingHorizontal: spacing.sm,
     marginBottom: 2,
   },
-  modeChipText: { fontSize: 11, fontWeight: '800', color: colors.white, letterSpacing: 0.3 },
+  modeChipText: { fontSize: 11, fontWeight: '800', color: colors.warning, letterSpacing: 0.3 },
   mascotWrap: { width: 84, height: 84, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm },
   ring: {
     position: 'absolute',
