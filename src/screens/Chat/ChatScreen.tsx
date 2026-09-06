@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View , Text, TextInput } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { PolicyCards, ReferralOffer } from './CareFollowUp';
 import ScheduleChangeForm from './ScheduleChangeForm';
@@ -11,6 +11,7 @@ import { careApi } from '../../services/care';
 import type { CareButtonRequest, CareChoice, CareFreeTextRequest } from '../../types/care';
 import TypingIndicator from './TypingIndicator';
 import { formatConversationText } from '../../utils/conversationText';
+import AiAvatar from '../../components/AiAvatar';
 
 const MINIMUM_AI_LOADING_MS = 1200;
 const REFERRAL_REVEAL_DELAY_MS = 2000;
@@ -21,9 +22,7 @@ function formatTime(value: string) {
 
 function Message({ text, time, user = false }: { text: string; time?: string; user?: boolean }) {
   return <View style={[styles.messageRow, user && styles.messageRowUser]}>
-    {!user && <View style={styles.avatar}>
-      <MaterialCommunityIcons name="robot" size={24} color={colors.chatAccent} />
-    </View>}
+    {!user && <AiAvatar variant="message" />}
     <View style={[styles.messageColumn, user && styles.messageColumnUser]}>
       {!user && <Text style={styles.botName}>자립동행 AI</Text>}
       <View style={[styles.bubble, user ? styles.bubbleUser : styles.bubbleBot]}>
@@ -290,8 +289,6 @@ const styles = StyleSheet.create({
   todayText: { color: colors.textTertiary, fontSize: 14, lineHeight: 20 },
   messageRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md, gap: spacing.md },
   messageRowUser: { justifyContent: 'flex-end' },
-  avatar: { width: 42, height: 42, borderRadius: radius.full, backgroundColor: colors.chatAvatar,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primaryLight },
   messageColumn: { flex: 1, alignItems: 'flex-start' },
   messageColumnUser: { alignItems: 'flex-end' },
   botName: { fontSize: 14, lineHeight: 20, color: colors.textSecondary, marginLeft: spacing.xs, marginBottom: spacing.xs },
