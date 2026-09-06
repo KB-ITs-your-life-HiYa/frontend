@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../constants/colors';
 
 import WelcomeScreen from '../screens/Onboarding/WelcomeScreen';
@@ -24,7 +25,7 @@ import HousingNoticeDetailScreen from '../screens/Housing/HousingNoticeDetailScr
 import BenefitDetailScreen from '../screens/Benefits/BenefitDetailScreen';
 import CareScreen from '../screens/Care/CareScreen';
 
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import { AccountType } from '../types';
@@ -75,7 +76,21 @@ const TAB_LABELS: Record<keyof RootTabParamList, string> = {
   Play: '놀이',
 };
 
+// 탭 바 밑에 흰 배경이 두 겹으로 보인다는 피드백 — react-navigation이 기기 하단 세이프 에어리어
+// 만큼을 tabBarStyle과 별도로 덧붙이면서, 우리가 준 고정 height(66)짜리 흰 바 아래에
+// 세이프 에어리어용 흰 여백이 또 한 겹 붙어 마치 배경이 두 개인 것처럼 보였다.
+// 세이프 에어리어 인셋을 직접 읽어서 height/padding에 미리 포함시키는 걸로 한 번 고쳤는데,
+// 홈 화면의 CareBanner 팝업(Modal)이 떠 있을 때만 다시 두 겹으로 보인다는 리포트가 왔다.
+// RN의 Modal이 열려 있는 동안 안드로이드에서 useSafeAreaInsets()가 이 화면(MainTabs) 쪽에
+// 순간적으로 다른 값(대개 0)을 돌려주는 경우가 있어서, insets.bottom을 매 렌더마다 반영하면
+// 팝업이 뜨는 순간 탭 바 높이 계산이 흔들려 버린다. 그래서 처음 마운트될 때 값을 한 번만
+// 저장해두고 그 뒤로는 화면 어딘가에서 Modal이 뜨든 말든 흔들리지 않게 고정했다.
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  const [bottomInset] = useState(() => insets.bottom);
+  const tabBarBasePadding = 10;
+  const tabBarBaseHeight = 56;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -83,7 +98,17 @@ function MainTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', lineHeight: 16 },
-        tabBarStyle: { height: 66, paddingBottom: 10, paddingTop: 6 },
+        tabBarStyle: {
+          height: tabBarBaseHeight + Math.max(bottomInset, tabBarBasePadding),
+          paddingBottom: Math.max(bottomInset, tabBarBasePadding),
+          paddingTop: 6,
+          backgroundColor: colors.white,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowColor: 'transparent',
+        },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name as keyof RootTabParamList];
           return <Ionicons name={focused ? icons.active : icons.inactive} size={size ?? 22} color={color} />;

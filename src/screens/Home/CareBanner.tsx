@@ -34,7 +34,11 @@ export default function CareBanner() {
   const close = () => setDismissed(key);
   const openChat = () => { close(); navigation.navigate('Chat', signal ? { signalId: signal.id } : undefined); };
 
-  return <Modal animationType="fade" transparent visible={Boolean(focused && !busy && !error && message && key !== dismissed)} onRequestClose={close}>
+  // statusBarTranslucent: 안드로이드에서 이 Modal이 떠 있는 동안 하단 탭 바의 세이프 에어리어
+  // 계산이 잠깐 흐트러져 배경이 두 겹으로 보이는 문제가 있었다. Modal이 상태 바 영역까지
+  // 자기 창을 확장하지 않고 기존 창 레이아웃 위에 그대로 그려지게 해서, 다른 화면 요소의
+  // 세이프 에어리어 측정에 영향을 주지 않도록 했다.
+  return <Modal animationType="fade" transparent statusBarTranslucent visible={Boolean(focused && !busy && !error && message && key !== dismissed)} onRequestClose={close}>
     <View style={styles.backdrop}>
       <View accessibilityViewIsModal style={styles.popup}>
         <View style={styles.content}>
