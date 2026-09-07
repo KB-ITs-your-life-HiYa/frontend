@@ -35,6 +35,11 @@ import {
   visibleDots,
 } from './calendarDots';
 import { buildScheduleEvents, upcomingScheduleEvents } from './scheduleEvents';
+import {
+  NOTICE_SORT_OPTIONS,
+  NoticeSortMode,
+  sortNotices,
+} from './noticeSort';
 import { TODAY, diffDays, formatMonthDay, isSameDay } from '../../utils/today';
 import { confirm } from '../../utils/confirm';
 
@@ -132,6 +137,9 @@ export default function HousingCalendarScreen() {
   const [notices, setNotices] = useState<HousingNoticeSummary[]>([]);
   const [ongoingNotices, setOngoingNotices] = useState<HousingNoticeSummary[]>([]);
   const [regionMessage, setRegionMessage] = useState<string | null>(null);
+  // mock: 서버 정렬 API 붙기 전 클라이언트에서 목록만 재정렬
+  const [noticeSort, setNoticeSort] = useState<NoticeSortMode>('recommended');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -243,7 +251,19 @@ export default function HousingCalendarScreen() {
     [notices, selectedDate]
   );
 
+  const sortedDayNotices = useMemo(
+    () => sortNotices(selectedDayNotices, noticeSort),
+    [selectedDayNotices, noticeSort]
+  );
+
+  const sortedOngoingNotices = useMemo(
+    () => sortNotices(ongoingNotices, noticeSort),
+    [ongoingNotices, noticeSort]
+  );
+
   const selectedDateLabel = `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`;
+  const noticeSortLabel =
+    NOTICE_SORT_OPTIONS.find((option) => option.value === noticeSort)?.label ?? '추천순';
 
   const previewSchedule = useMemo(() => {
     const merged = new Map<number, HousingNoticeSummary>();
@@ -527,13 +547,27 @@ export default function HousingCalendarScreen() {
           </Card>
         ) : (
           <>
-            <SectionHeader title={`${selectedDateLabel} 공고`} />
-            {selectedDayNotices.length === 0 ? (
+            <View style={styles.noticeHeaderBlock}>
+              <SectionHeader title={`${selectedDateLabel} 공고`} />
+              <View style={styles.sortToolbar}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`정렬 ${noticeSortLabel}`}
+                  onPress={() => setSortMenuOpen(true)}
+                  style={styles.sortTrigger}
+                >
+                  <Text style={styles.sortTriggerText}>{noticeSortLabel}</Text>
+                  <Ionicons name="chevron-down" size={14} color={colors.textTertiary} />
+                </Pressable>
+                <Text style={styles.sortCount}>공고 {sortedDayNotices.length}개</Text>
+              </View>
+            </View>
+            {sortedDayNotices.length === 0 ? (
               <Card style={styles.emptyCard}>
                 <Text style={styles.emptyText}>이 날짜에 접수 중인 공고가 없어요</Text>
               </Card>
             ) : (
-              selectedDayNotices.map((notice) => {
+              sortedDayNotices.map((notice) => {
                 const start = parseLocalDate(notice.beginDate);
                 const end = parseLocalDate(notice.endDate);
                 const total = diffDays(end, start) || 1;
@@ -566,13 +600,27 @@ export default function HousingCalendarScreen() {
               })
             )}
 
-            <SectionHeader title="상시 모집" />
-            {ongoingNotices.length === 0 ? (
+            <View style={styles.noticeHeaderBlock}>
+              <SectionHeader title="상시 모집" />
+              <View style={styles.sortToolbar}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`정렬 ${noticeSortLabel}`}
+                  onPress={() => setSortMenuOpen(true)}
+                  style={styles.sortTrigger}
+                >
+                  <Text style={styles.sortTriggerText}>{noticeSortLabel}</Text>
+                  <Ionicons name="chevron-down" size={14} color={colors.textTertiary} />
+                </Pressable>
+                <Text style={styles.sortCount}>상시 {sortedOngoingNotices.length}개</Text>
+              </View>
+            </View>
+            {sortedOngoingNotices.length === 0 ? (
               <Card style={styles.emptyCard}>
                 <Text style={styles.emptyText}>상시 모집 공고가 없어요</Text>
               </Card>
             ) : (
-              ongoingNotices.map((notice) => {
+              sortedOngoingNotices.map((notice) => {
                 const start = parseLocalDate(notice.beginDate);
                 const end = parseLocalDate(notice.endDate);
                 return (
@@ -796,6 +844,33 @@ export default function HousingCalendarScreen() {
         )}
       </ScrollView>
 
+      <Modal visible={sortMenuOpen} transparent animationType="fade" onRequestClose={() => setSortMenuOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuOpen(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>정렬</Text>
+            <Text style={styles.modalSubtitle}>공고 목록을 원하는 순서로 볼 수 있어요</Text>
+            {NOTICE_SORT_OPTIONS.map((option) => {
+              const active = noticeSort === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => {
+                    setNoticeSort(option.value);
+                    setSortMenuOpen(false);
+                  }}
+                  style={[styles.sortMenuItem, active && styles.sortMenuItemActive]}
+                >
+                  <Text style={[styles.sortMenuText, active && styles.sortMenuTextActive]}>{option.label}</Text>
+                  {active ? <Ionicons name="checkmark" size={18} color={colors.primary} /> : null}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={() => setPickerVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setPickerVisible(false)}>
           <Pressable style={styles.modalSheet} onPress={() => {}}>
@@ -1002,6 +1077,32 @@ const styles = StyleSheet.create({
   dayTextSelected: { color: colors.primary, fontWeight: '700' },
   scheduleListCard: { paddingVertical: 4 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  noticeHeaderBlock: { gap: 8, marginBottom: spacing.sm },
+  sortToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: spacing.xs,
+  },
+  sortTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 4,
+  },
+  sortTriggerText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  sortCount: { fontSize: 12, color: colors.textTertiary },
+  sortMenuItem: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: radius.md,
+  },
+  sortMenuItemActive: { backgroundColor: colors.primaryLight },
+  sortMenuText: { fontSize: 15, color: colors.textPrimary, fontWeight: '600' },
+  sortMenuTextActive: { color: colors.primary },
   checklistSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
