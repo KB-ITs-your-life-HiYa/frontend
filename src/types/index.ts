@@ -48,7 +48,9 @@ export interface Member {
   tier: EligibilityTier;
   tierLabel: string;
   daysUntilSupportEnd: number | null;
-  homeRegionCode: string | null;
+  protectionEndDate: string | null; // YYYY-MM-DD. 보호중이면 null
+  homeRegionCode: string | null; // 보호종료 당시 거주지(정착금 계산용). 매칭엔 안 쓰임
+  regionName: string | null; // 현재 거주지. "경기도 수원시 팔달구" 형태, 매칭에 쓰는 지역
 }
 
 /** POST /auth/login 응답 */

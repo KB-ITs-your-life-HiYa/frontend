@@ -8,7 +8,13 @@ import SectionHeader from '../../components/SectionHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
 import { benefitApi } from '../../services/benefit';
+import { useAuth } from '../../contexts/AuthContext';
 import type { CategoryMatchResponse, MatchCondition, SubsidyMatchResponse, SurveyResponse } from '../../types/benefit';
+
+function formatYearMonth(iso: string) {
+  const [y, m] = iso.split('-');
+  return `${y}.${m}`;
+}
 
 interface Props {
   survey: SurveyResponse;
@@ -82,6 +88,7 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
         <InfoCard survey={survey} onRetake={onRetake} />
 
         <SectionHeader title="추천 지원 정책" />
+        <Text style={styles.filterHint}>위 내 정보를 기준으로 필터링된 결과예요</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -115,27 +122,57 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
 }
 
 function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () => void }) {
-  const chips: string[] = [];
+  const { member } = useAuth();
+  const [acctOpen, setAcctOpen] = useState(false);
+
+  const acctChips: string[] = [];
+  if (member) {
+    acctChips.push(`만 ${member.age}세`);
+    acctChips.push(member.protectionEndDate ? `보호종료 ${formatYearMonth(member.protectionEndDate)}` : '보호중');
+    if (member.regionName) acctChips.push(member.regionName);
+  }
+
+  const surveyChips: string[] = [];
   if (survey.householdSize != null) {
-    chips.push(survey.householdSize >= 6 ? '6인 이상 가구' : `${survey.householdSize}인 가구`);
+    surveyChips.push(survey.householdSize >= 6 ? '6인 이상 가구' : `${survey.householdSize}인 가구`);
   }
   if (survey.incomePctBracket != null) {
-    chips.push(survey.incomePctBracket === 999 ? '소득 150% 초과' : `소득 ${survey.incomePctBracket}% 이하`);
+    surveyChips.push(survey.incomePctBracket === 999 ? '소득 150% 초과' : `소득 ${survey.incomePctBracket}% 이하`);
   }
-  if (survey.isBenefitRecipient) chips.push('기초생활수급자 등');
-  if (survey.employmentStatus) chips.push(EMPLOYMENT_STATUS_LABELS[survey.employmentStatus]);
-  if (survey.housingType) chips.push(HOUSING_TYPE_LABELS[survey.housingType]);
-  survey.tags.forEach((tag) => chips.push(SURVEY_TAG_LABELS[tag]));
+  if (survey.isBenefitRecipient) surveyChips.push('기초생활수급자 등');
+  if (survey.employmentStatus) surveyChips.push(EMPLOYMENT_STATUS_LABELS[survey.employmentStatus]);
+  if (survey.housingType) surveyChips.push(HOUSING_TYPE_LABELS[survey.housingType]);
+  survey.tags.forEach((tag) => surveyChips.push(SURVEY_TAG_LABELS[tag]));
 
   return (
     <Card style={styles.infoCard}>
       <View style={styles.infoHeader}>
         <Text style={styles.infoTitle}>내 정보</Text>
-        <Text style={styles.infoHint}>설문 응답 기준</Text>
+        <Text style={styles.infoHint}>매칭에 사용된 정보</Text>
       </View>
-      {chips.length > 0 ? (
+
+      {acctChips.length > 0 ? (
+        <View>
+          <Pressable style={styles.infoGroupToggle} onPress={() => setAcctOpen((v) => !v)}>
+            <Text style={styles.infoGroupLabel}>계정 정보</Text>
+            <Ionicons name={acctOpen ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} />
+          </Pressable>
+          {acctOpen ? (
+            <View style={styles.infoChipRow}>
+              {acctChips.map((label, idx) => (
+                <View key={idx} style={styles.infoChipOutline}>
+                  <Text style={styles.infoChipOutlineText}>{label}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      <Text style={styles.infoGroupLabel}>설문 응답</Text>
+      {surveyChips.length > 0 ? (
         <View style={styles.infoChipRow}>
-          {chips.map((label, idx) => (
+          {surveyChips.map((label, idx) => (
             <View key={idx} style={styles.infoChip}>
               <Text style={styles.infoChipText}>{label}</Text>
             </View>
@@ -144,6 +181,7 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
       ) : (
         <Text style={styles.infoEmptyText}>아직 입력한 정보가 없어요</Text>
       )}
+
       <Pressable style={styles.retakeButton} onPress={onRetake}>
         <Text style={styles.retakeButtonText}>설문 다시하기</Text>
       </Pressable>
@@ -200,7 +238,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 13, color: colors.textTertiary },
-  tabScroll: { marginTop: spacing.md },
+  tabScroll: {},
   tabBarContent: { gap: spacing.sm, paddingBottom: spacing.md },
   tab: {
     paddingHorizontal: spacing.md,
@@ -219,7 +257,9 @@ const styles = StyleSheet.create({
   infoHeader: { flexDirection: 'row', alignItems: 'center' },
   infoTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   infoHint: { fontSize: 12, color: colors.textTertiary, marginLeft: 'auto' },
-  infoChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  infoGroupToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
+  infoGroupLabel: { fontSize: 11, fontWeight: '700', color: colors.textTertiary, marginBottom: spacing.xs },
+  infoChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.xs },
   infoChip: {
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: 5,
@@ -227,7 +267,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   infoChipText: { fontSize: 12, fontWeight: '500', color: colors.primary },
-  infoEmptyText: { fontSize: 12, color: colors.textTertiary },
+  infoChipOutline: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  infoChipOutlineText: { fontSize: 12, fontWeight: '500', color: colors.textSecondary },
+  infoEmptyText: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.xs },
+  filterHint: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.sm },
   retakeButton: {
     alignItems: 'center',
     paddingVertical: spacing.sm + 2,
