@@ -154,7 +154,6 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
           color={colors.textTertiary}
           style={styles.infoHeaderIcon}
         />
-        <Text style={styles.infoHint}>매칭에 사용된 정보</Text>
       </Pressable>
 
       {open ? (
@@ -262,7 +261,6 @@ const styles = StyleSheet.create({
   infoHeader: { flexDirection: 'row', alignItems: 'center' },
   infoHeaderIcon: { marginLeft: 4 },
   infoTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  infoHint: { fontSize: 12, color: colors.textTertiary, marginLeft: 'auto' },
   infoGroupLabel: { fontSize: 11, fontWeight: '700', color: colors.textTertiary, marginBottom: spacing.xs },
   infoChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.xs },
   infoChip: {
@@ -282,7 +280,7 @@ const styles = StyleSheet.create({
   },
   infoChipOutlineText: { fontSize: 12, fontWeight: '500', color: colors.textSecondary },
   infoEmptyText: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.xs },
-  filterHint: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.sm },
+  filterHint: { fontSize: 12, color: colors.textTertiary, marginTop: 4, marginBottom: spacing.sm },
   retakeButton: {
     alignItems: 'center',
     paddingVertical: spacing.sm + 2,
