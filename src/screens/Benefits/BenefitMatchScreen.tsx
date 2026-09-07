@@ -123,7 +123,7 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
 
 function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () => void }) {
   const { member } = useAuth();
-  const [acctOpen, setAcctOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const acctChips: string[] = [];
   if (member) {
@@ -146,45 +146,50 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
 
   return (
     <Card style={styles.infoCard}>
-      <View style={styles.infoHeader}>
+      <Pressable style={styles.infoHeader} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.infoTitle}>내 정보</Text>
+        <Ionicons
+          name={open ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color={colors.textTertiary}
+          style={styles.infoHeaderIcon}
+        />
         <Text style={styles.infoHint}>매칭에 사용된 정보</Text>
-      </View>
+      </Pressable>
 
-      {acctChips.length > 0 ? (
-        <View>
-          <Pressable style={styles.infoGroupToggle} onPress={() => setAcctOpen((v) => !v)}>
-            <Text style={styles.infoGroupLabel}>계정 정보</Text>
-            <Ionicons name={acctOpen ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} />
-          </Pressable>
-          {acctOpen ? (
+      {open ? (
+        <>
+          {acctChips.length > 0 ? (
+            <View>
+              <Text style={styles.infoGroupLabel}>계정 정보</Text>
+              <View style={styles.infoChipRow}>
+                {acctChips.map((label, idx) => (
+                  <View key={idx} style={styles.infoChipOutline}>
+                    <Text style={styles.infoChipOutlineText}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <Text style={styles.infoGroupLabel}>설문 응답</Text>
+          {surveyChips.length > 0 ? (
             <View style={styles.infoChipRow}>
-              {acctChips.map((label, idx) => (
-                <View key={idx} style={styles.infoChipOutline}>
-                  <Text style={styles.infoChipOutlineText}>{label}</Text>
+              {surveyChips.map((label, idx) => (
+                <View key={idx} style={styles.infoChip}>
+                  <Text style={styles.infoChipText}>{label}</Text>
                 </View>
               ))}
             </View>
-          ) : null}
-        </View>
+          ) : (
+            <Text style={styles.infoEmptyText}>아직 입력한 정보가 없어요</Text>
+          )}
+
+          <Pressable style={styles.retakeButton} onPress={onRetake}>
+            <Text style={styles.retakeButtonText}>설문 다시하기</Text>
+          </Pressable>
+        </>
       ) : null}
-
-      <Text style={styles.infoGroupLabel}>설문 응답</Text>
-      {surveyChips.length > 0 ? (
-        <View style={styles.infoChipRow}>
-          {surveyChips.map((label, idx) => (
-            <View key={idx} style={styles.infoChip}>
-              <Text style={styles.infoChipText}>{label}</Text>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.infoEmptyText}>아직 입력한 정보가 없어요</Text>
-      )}
-
-      <Pressable style={styles.retakeButton} onPress={onRetake}>
-        <Text style={styles.retakeButtonText}>설문 다시하기</Text>
-      </Pressable>
     </Card>
   );
 }
@@ -255,9 +260,9 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl },
   infoCard: { gap: spacing.sm, marginBottom: spacing.md },
   infoHeader: { flexDirection: 'row', alignItems: 'center' },
+  infoHeaderIcon: { marginLeft: 4 },
   infoTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   infoHint: { fontSize: 12, color: colors.textTertiary, marginLeft: 'auto' },
-  infoGroupToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
   infoGroupLabel: { fontSize: 11, fontWeight: '700', color: colors.textTertiary, marginBottom: spacing.xs },
   infoChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.xs },
   infoChip: {
