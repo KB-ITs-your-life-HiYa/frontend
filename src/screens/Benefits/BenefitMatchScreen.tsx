@@ -123,7 +123,7 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
 
 function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () => void }) {
   const { member } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const acctChips: string[] = [];
   if (member) {
