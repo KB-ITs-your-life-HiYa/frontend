@@ -12,6 +12,8 @@ import type { CareButtonRequest, CareChoice, CareFreeTextRequest } from '../../t
 import TypingIndicator from './TypingIndicator';
 import { formatConversationText } from '../../utils/conversationText';
 import AiAvatar from '../../components/AiAvatar';
+// TODO(DELETE): 케어 시연용 날짜 조작. 정식 배포 전 CareDemoControls.tsx 와 함께 삭제
+import CareDemoControls from './CareDemoControls';
 
 const MINIMUM_AI_LOADING_MS = 1200;
 const REFERRAL_REVEAL_DELAY_MS = 2000;
@@ -208,6 +210,24 @@ export default function ChatScreen() {
 
   return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScreenHeader />
+    {/* TODO(DELETE): 케어 시연용 날짜 조작 시작 */}
+    <CareDemoControls
+      busy={busy}
+      asOf={summary?.asOf}
+      demoEnabled={summary?.demoEnabled}
+      onRun={async (operation) => {
+        setDeclined([]);
+        setEditingSignal(null);
+        setPendingUserText(null);
+        setLocalTyping(false);
+        setAwaitingAi(false);
+        setReferralLoadingId(null);
+        setRevealedReferralIds([]);
+        policyAttempts.current.clear();
+        return run(operation);
+      }}
+    />
+    {/* TODO(DELETE): 케어 시연용 날짜 조작 끝 */}
     <ScrollView ref={scroll} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled"
       onContentSizeChange={() => {
         if (signals.length > 1 || (signal?.replies.length ?? 0) > 0) scroll.current?.scrollToEnd({ animated: true });
