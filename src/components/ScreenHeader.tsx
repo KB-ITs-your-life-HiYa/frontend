@@ -12,6 +12,8 @@ interface Props {
   showNotification?: boolean; // 알림 종 아이콘. 홈 화면에서만 켠다
   flat?: boolean; // 흰 배경·구분선 없이 화면 배경과 이어붙는 헤더. 타이틀도 검정 계열로
   extraTopPadding?: number; // SafeArea 위에 추가로 더 줄 여백
+  rightLabel?: string; // 오른쪽에 텍스트 버튼(예: "완료")을 둘 때
+  onRightPress?: () => void;
 }
 
 // 모든 화면 상단에 공통으로 쓰는 앱 타이틀 바
@@ -22,6 +24,8 @@ export default function ScreenHeader({
   showNotification = false,
   flat = false,
   extraTopPadding = 0,
+  rightLabel,
+  onRightPress,
 }: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -39,6 +43,11 @@ export default function ScreenHeader({
         {title}
       </Text>
       <View style={[styles.side, styles.sideRight]}>
+        {rightLabel ? (
+          <Pressable hitSlop={8} onPress={onRightPress}>
+            <Text style={styles.rightLabel}>{rightLabel}</Text>
+          </Pressable>
+        ) : null}
         {showNotification ? (
           <Pressable
             hitSlop={8}
@@ -77,6 +86,7 @@ const styles = StyleSheet.create({
   side: { width: 36, alignItems: 'flex-start', justifyContent: 'center' },
   sideRight: { width: 'auto', minWidth: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
   title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.primary, textAlign: 'center' },
+  rightLabel: { fontSize: 14, fontWeight: '600', color: colors.primary },
   titleFlat: { color: colors.textPrimary },
   profileButton: {
     width: 30,

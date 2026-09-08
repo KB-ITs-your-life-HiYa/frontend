@@ -25,6 +25,11 @@ export interface CareSignal {
     requestId: string; aiStatus: 'PENDING' | 'READY' | 'ERROR' | null; createdAt: string;
   }[];
 }
+// 지원금/독립지원/서비스 이용 자유질문 RAG 챗봇. Care 상담(위 CareSignal 흐름)과는 별개 경로다.
+export interface FaqSource { docId: string; title: string; }
+export interface FaqAskRequest { question: string; }
+export interface FaqAskResponse { answer: string; grounded: boolean; sources: FaqSource[]; }
+
 export interface CareSummary {
   asOf: string; demoEnabled: boolean; hasSchedules: boolean; riskScore: number;
   riskLevel: 'NORMAL' | 'CARE' | 'HUMAN_CARE';

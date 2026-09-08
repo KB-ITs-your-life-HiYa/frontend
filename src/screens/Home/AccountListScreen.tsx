@@ -97,7 +97,7 @@ function AccountRow({ account }: { account: AccountItem }) {
         <Text style={styles.rowBankName}>{account.bankName}</Text>
         <Text style={styles.rowType}>{TYPE_LABELS[account.accountType]}</Text>
       </View>
-      <MoneyText amount={account.balance} variant="medium" />
+      <MoneyText amount={account.balance} variant="medium" animate={false} />
     </View>
   );
 }
