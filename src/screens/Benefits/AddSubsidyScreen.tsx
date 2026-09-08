@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { mySubsidyApi, subsidyApi } from '../../services/benefit';
 import type { SubsidySummary } from '../../types/benefit';
 
 export default function AddSubsidyScreen() {
+  const navigation = useNavigation<any>();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SubsidySummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,7 +45,15 @@ export default function AddSubsidyScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="지원금 추가" showBack showProfile={false} flat extraTopPadding={14} />
+      <ScreenHeader
+        title="지원금 추가"
+        showBack
+        showProfile={false}
+        flat
+        extraTopPadding={14}
+        rightLabel="완료"
+        onRightPress={() => navigation.navigate('MainTabs', { screen: 'Benefits' })}
+      />
       <View style={styles.searchWrap}>
         <TextInput
           value={query}
