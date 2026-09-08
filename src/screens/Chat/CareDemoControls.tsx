@@ -12,8 +12,8 @@ import type { CareSummary } from '../../types/care';
 
 const DEMO_DATES = [
   { date: '2026-09-23', label: '09-23 시작' },
-  { date: '2026-09-24', label: '09-24 적금누락' },
-  { date: '2026-09-26', label: '09-26 고위험' },
+  { date: '2026-09-24', label: '09-24 공과금누락' },
+  { date: '2026-09-26', label: '09-26 소득누락' },
   { date: '2026-10-01', label: '10-01 재확인' },
 ] as const;
 
