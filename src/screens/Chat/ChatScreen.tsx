@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View , Text, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { PolicyCards, ReferralOffer } from './CareFollowUp';
+import { PolicyCards, ReferralOffer, SupportOffer } from './CareFollowUp';
 import ScheduleChangeForm from './ScheduleChangeForm';
 import ScreenHeader from '../../components/ScreenHeader';
 import { colors, radius, spacing } from '../../constants/colors';
@@ -12,14 +12,37 @@ import type { CareButtonRequest, CareChoice, CareFreeTextRequest } from '../../t
 import TypingIndicator from './TypingIndicator';
 import { formatConversationText } from '../../utils/conversationText';
 import AiAvatar from '../../components/AiAvatar';
+import CareBanner from '../Home/CareBanner';
 // TODO(DELETE): 케어 시연용 날짜 조작. 정식 배포 전 CareDemoControls.tsx 와 함께 삭제
 import CareDemoControls from './CareDemoControls';
 
 const MINIMUM_AI_LOADING_MS = 1200;
 const REFERRAL_REVEAL_DELAY_MS = 2000;
 
-function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
+function formatCurrentTime() {
+  return new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
+}
+
+function chatDayLabel(date: string | undefined, referenceDate: string | undefined) {
+  const target = date?.slice(0, 10);
+  const reference = referenceDate?.slice(0, 10) ?? target;
+  if (!target || target === reference) return '오늘';
+  const [, month, day] = target.split('-');
+  return `${Number(month)}월 ${Number(day)}일`;
+}
+
+function DaySeparator({ date, referenceDate }: { date?: string; referenceDate?: string }) {
+  return <View style={styles.todayPillWrap}>
+    <View style={styles.todayPill}>
+      <Text style={styles.todayText}>{chatDayLabel(date, referenceDate)}</Text>
+    </View>
+  </View>;
+}
+
+function supportQuestion(type: 'MISSED_SAVING' | 'MISSED_PAYMENT' | 'INCOME_MISSING') {
+  return type === 'INCOME_MISSING'
+    ? '조금 더 안정적으로 일할 수 있는 일자리를 추천해드릴까요?'
+    : '현재 상황에 맞는 생활비·금융지원을 찾아봐드릴까요?';
 }
 
 function Message({ text, time, user = false }: { text: string; time?: string; user?: boolean }) {
@@ -32,7 +55,7 @@ function Message({ text, time, user = false }: { text: string; time?: string; us
           {formatConversationText(text)}
         </Text>
       </View>
-      {time && <Text style={[styles.timestamp, user && styles.timestampRight]}>{formatTime(time)}</Text>}
+      {time && <Text style={[styles.timestamp, user && styles.timestampRight]}>{formatCurrentTime()}</Text>}
     </View>
   </View>;
 }
@@ -60,9 +83,9 @@ export default function ChatScreen() {
   const [awaitingAi, setAwaitingAi] = useState(false);
   const [referralLoadingId, setReferralLoadingId] = useState<number | null>(null);
   const [revealedReferralIds, setRevealedReferralIds] = useState<number[]>([]);
+  const [supportChoices, setSupportChoices] = useState<Record<number, 'YES' | 'NO'>>({});
   const localTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const referralTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const policyAttempts = useRef(new Set<number>());
   useFocusEffect(useCallback(() => {
     setDeclined([]);
     setPendingUserText(null);
@@ -70,7 +93,7 @@ export default function ChatScreen() {
     setAwaitingAi(false);
     setReferralLoadingId(null);
     setRevealedReferralIds([]);
-    policyAttempts.current.clear();
+    setSupportChoices({});
     return () => {
       if (localTypingTimer.current) clearTimeout(localTypingTimer.current);
       if (referralTimer.current) clearTimeout(referralTimer.current);
@@ -121,19 +144,6 @@ export default function ChatScreen() {
       setEditingSignal(signal.id);
     }
   }, [signal]);
-
-  // 저장 직후 또는 재진입 시 미완료 정책 조회만 이어간다. 오류는 명시적인 재시도로 처리한다.
-  useEffect(() => {
-    if (busy || !summary) return;
-    for (const conversation of summary.signals) {
-      const response = conversation.replies.find(r => r.policies?.status === 'PENDING' && !policyAttempts.current.has(r.id));
-      if (response) {
-        policyAttempts.current.add(response.id);
-        void run(() => careApi.policies(conversation.id, response.id), { minimumLoadingMs: MINIMUM_AI_LOADING_MS });
-        break;
-      }
-    }
-  }, [summary, busy, run]);
 
   async function send(choice: CareChoice, change: Pick<CareButtonRequest, 'expectedDay' | 'expectedAmount'> = {}) {
     if (!signal || interactionBusy) return;
@@ -203,6 +213,17 @@ export default function ChatScreen() {
     setAwaitingAi(false);
   }
 
+  async function requestSupport(conversationId: number, responseId: number) {
+    if (interactionBusy) return;
+    setSupportChoices(current => ({ ...current, [conversationId]: 'YES' }));
+    await run(() => careApi.policies(conversationId, responseId), { minimumLoadingMs: MINIMUM_AI_LOADING_MS });
+  }
+
+  function declineSupport(conversationId: number) {
+    if (interactionBusy) return;
+    setSupportChoices(current => ({ ...current, [conversationId]: 'NO' }));
+  }
+
   function cancelScheduleChange() {
     setEditingSignal(null);
     requestAnimationFrame(() => scroll.current?.scrollToEnd({ animated: true }));
@@ -210,6 +231,7 @@ export default function ChatScreen() {
 
   return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScreenHeader />
+    <CareBanner summary={summary} busy={busy} error={error} />
     {/* TODO(DELETE): 케어 시연용 날짜 조작 시작 */}
     <CareDemoControls
       busy={busy}
@@ -223,7 +245,6 @@ export default function ChatScreen() {
         setAwaitingAi(false);
         setReferralLoadingId(null);
         setRevealedReferralIds([]);
-        policyAttempts.current.clear();
         return run(operation);
       }}
     />
@@ -232,9 +253,9 @@ export default function ChatScreen() {
       onContentSizeChange={() => {
         if (signals.length > 1 || (signal?.replies.length ?? 0) > 0) scroll.current?.scrollToEnd({ animated: true });
       }}>
-      <View style={styles.todayPillWrap}><View style={styles.todayPill}><Text style={styles.todayText}>오늘</Text></View></View>
       {signal ? <>
         {signals.map(conversation => <React.Fragment key={conversation.id}>
+          <DaySeparator date={conversation.detectedAt} referenceDate={summary?.asOf} />
           <Message text={conversation.prompt} time={conversation.detectedAt} />
           {conversation.replies.map(reply => <React.Fragment key={reply.id}>
             <Message text={reply.inputType === 'BUTTON' && reply.choice === 'LATER' ? '다음에 확인할게요' : reply.userText}
@@ -248,12 +269,32 @@ export default function ChatScreen() {
                 <Text style={styles.quickReplyText}>다시 답변받기</Text>
               </Pressable>
             </View>}
+            {reply.policies && supportChoices[conversation.id] && <>
+              <Message text={supportQuestion(conversation.type)} />
+              <Message text={supportChoices[conversation.id] === 'YES' ? '네' : '아니요'} user />
+            </>}
+            {reply.policies && supportChoices[conversation.id] === 'YES' && <>
+              <Message text={conversation.type === 'INCOME_MISSING'
+                ? '네, 현재 상황에 맞는 일자리와 일경험 기회를 찾아봐드릴게요.'
+                : '네, 현재 상황에 맞는 생활비·금융지원 정보를 찾아봐드릴게요.'} />
+            </>}
             {reply.policies && <PolicyCards policies={reply.policies} busy={busy}
               retry={() => { void run(() => careApi.policies(conversation.id, reply.id),
                 { minimumLoadingMs: MINIMUM_AI_LOADING_MS }); }} /> }
           </React.Fragment>)}
-          {conversation.referral && <Message text="담당자 연결 요청이 접수되었어요. 아직 담당자 배정 전이에요."
+          {conversation.referral && <Message text="김민지 담당자님께 현재 상황을 전달했어요. 담당자님이 확인 후 연락드릴 수 있어요."
             time={conversation.referral.requestedAt} />}
+          {(() => {
+            const pendingPolicy = [...conversation.replies].reverse().find(reply => reply.policies?.status === 'PENDING');
+            const choice = supportChoices[conversation.id];
+            if (!pendingPolicy || choice) return null;
+            return <SupportOffer signalType={conversation.type} busy={interactionBusy}
+              accept={() => { void requestSupport(conversation.id, pendingPolicy.id); }}
+              decline={() => declineSupport(conversation.id)} />;
+          })()}
+          {supportChoices[conversation.id] === 'NO' && <>
+            <Message text="네, 알겠어요. 도움이 필요할 때 언제든지 다시 이야기해 주세요." />
+          </>}
           {referralLoadingId === conversation.id && <TypingIndicator />}
           {offerSignal?.id === conversation.id && revealedReferralIds.includes(conversation.id)
             && !conversation.referral && !declined.includes(conversation.id)
@@ -275,7 +316,7 @@ export default function ChatScreen() {
             label={option.value === 'LATER' ? '다음에 확인할게요' : option.label}
             onPress={() => { void send(option.value); }} />)}
         </View>}
-      </> : summary && <Message text={summary.reminders[0]?.message ?? '아직 상담이 필요한 이상징후가 없어요.'} />}
+      </> : summary && <DaySeparator date={summary.asOf} referenceDate={summary.asOf} />}
       {busy && !summary && <ActivityIndicator color={colors.chatAccent} accessibilityLabel="상담 불러오는 중" />}
       {error && <View style={styles.errorWrap} accessibilityRole="alert">
         <Text style={styles.errorText}>{error}</Text>

@@ -1,39 +1,42 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View , Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import type { RootTabParamList } from '../../navigation/RootNavigator';
+import { useIsFocused } from '@react-navigation/native';
 import { useCare } from '../../hooks/useCare';
 import { colors, spacing } from '../../constants/colors';
-import type { CareSignal } from '../../types/care';
+import type { CareSignal, CareSummary } from '../../types/care';
 import AiAvatar from '../../components/AiAvatar';
 
 function recheckMessage(signal: CareSignal) {
   switch (signal.type) {
-    case 'MISSED_SAVING':
-      return '적금 납입일로부터 일주일이 지났지만 아직 입금되지 않았어요. 혹시 확인이나 도움이 필요하신가요?';
     case 'MISSED_PAYMENT':
-      return '납부 예정일로부터 일주일이 지났지만 아직 납부되지 않았어요. 혹시 확인이나 도움이 필요하신가요?';
+      return '공과금 납부 예정일로부터 일주일이 지났지만 아직 납부 내역이 확인되지 않았어요. 많이 걱정되실 것 같아 다시 확인해요.';
     case 'INCOME_MISSING':
-      return '입금 예정일로부터 일주일이 지났지만 아직 입금되지 않았어요. 혹시 확인이나 도움이 필요하신가요?';
+      return '소득 입금 예정일로부터 일주일이 지났지만 아직 입금 내역이 확인되지 않았어요. 혹시 상황에 변화가 있으신가요?';
+    default:
+      return '적금 납입일로부터 일주일이 지났지만 아직 납입 내역이 확인되지 않았어요. 혹시 확인이나 도움이 필요하신가요?';
   }
 }
 
-export default function CareBanner() {
-  const { summary, error, busy } = useCare();
-  const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
+type CareBannerProps = {
+  summary?: CareSummary | null;
+  busy?: boolean;
+  error?: string | null;
+};
+
+export default function CareBanner(props: CareBannerProps = {}) {
+  const ownCare = useCare();
+  const summary = props.summary !== undefined ? props.summary : ownCare.summary;
+  const error = props.error !== undefined ? props.error : ownCare.error;
+  const busy = props.busy !== undefined ? props.busy : ownCare.busy;
   const focused = useIsFocused();
   const [dismissed, setDismissed] = useState<string>();
-  const signal = useMemo(() => {
-    const open = summary?.signals.filter(item => item.status === 'OPEN') ?? [];
-    return open.filter(item => item.recheckedAt !== null).at(-1) ?? open.at(-1);
-  }, [summary]);
+  const signal = summary?.signals.filter(item => item.status === 'OPEN' && item.recheckedAt !== null).at(-1);
   const reminder = summary?.reminders[0];
-  const key = signal ? `signal-${signal.id}-${signal.recheckedAt ?? signal.detectedAt}` : reminder ? `reminder-${summary?.asOf}-${reminder.cycleId}` : undefined;
-  const message = signal?.recheckedAt ? recheckMessage(signal) : signal?.prompt ?? reminder?.message;
+  const key = signal ? `signal-${signal.id}-${signal.recheckedAt}`
+    : reminder ? `reminder-${summary?.asOf}-${reminder.cycleId}` : undefined;
+  const message = signal ? recheckMessage(signal) : reminder?.message;
   const close = () => setDismissed(key);
-  const openChat = () => { close(); navigation.navigate('Chat', signal ? { signalId: signal.id } : undefined); };
 
   // statusBarTranslucent: 안드로이드에서 이 Modal이 떠 있는 동안 하단 탭 바의 세이프 에어리어
   // 계산이 잠깐 흐트러져 배경이 두 겹으로 보이는 문제가 있었다. Modal이 상태 바 영역까지
@@ -51,9 +54,7 @@ export default function CareBanner() {
           <Pressable accessibilityLabel="알림 닫기" hitSlop={12} style={styles.close} onPress={close}><Ionicons name="close" size={22} color={colors.textTertiary} /></Pressable>
         </View>
         <View style={styles.actions}>
-          <Pressable style={styles.action} onPress={close}><Text style={styles.later}>나중에 하기</Text></Pressable>
-          <View style={styles.divider} />
-          <Pressable style={styles.action} onPress={openChat}><Text style={styles.confirm}>지금 확인하기</Text></Pressable>
+          <Pressable style={styles.action} onPress={close}><Text style={styles.confirm}>확인</Text></Pressable>
         </View>
       </View>
     </View>
@@ -67,5 +68,5 @@ const styles = StyleSheet.create({
   title: { flex: 1, color: colors.textPrimary, fontSize: 18, fontWeight: '700' }, time: { color: colors.textTertiary, fontSize: 12 },
   message: { color: colors.textPrimary, fontSize: 17, lineHeight: 25 }, close: { position: 'absolute', top: 20, right: 18 },
   actions: { height: 58, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }, action: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  divider: { width: StyleSheet.hairlineWidth, backgroundColor: colors.border }, later: { color: colors.textTertiary, fontSize: 16 }, confirm: { color: colors.primary, fontSize: 16, fontWeight: '700' },
+  confirm: { color: colors.primary, fontSize: 16, fontWeight: '700' },
 });

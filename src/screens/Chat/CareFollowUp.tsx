@@ -15,13 +15,10 @@ export function PolicyCards({ policies, busy, retry }: {
       await Linking.openURL(url);
     } catch { setLinkError(true); }
   }
-  if (busy && policies.status !== 'READY') return <TypingIndicator />;
+  if (policies.status === 'PENDING') return busy ? <TypingIndicator /> : null;
 
   return <View style={styles.policyGroup}>
-    {policies.status === 'PENDING' && <>
-      <Text style={styles.caption}>관련 정책을 확인하고 있어요.</Text>
-      {!busy && <Pressable accessibilityRole="button" onPress={retry}><Text style={styles.action}>정책 확인하기</Text></Pressable>}
-    </>}
+    {policies.status === 'PENDING' && <Text style={styles.caption}>관련 정책을 확인할 준비가 되었어요.</Text>}
     {policies.cards.map(card => <View key={card.id} style={styles.card}>
       <Text style={styles.caption}>{card.category === 'FINANCE' ? '생활비·금융지원' : '취업·일경험'} · 온통청년</Text>
       <Text style={styles.title}>{card.name}</Text>
@@ -43,15 +40,33 @@ export function PolicyCards({ policies, busy, retry }: {
   </View>;
 }
 
+export function SupportOffer({ signalType, busy, accept, decline }: {
+  signalType: CareSignal['type']; busy: boolean;
+  accept: () => void; decline: () => void;
+}) {
+  const employment = signalType === 'INCOME_MISSING';
+  return <View style={styles.followUp}>
+    <View style={styles.referralCard}>
+      <Text style={styles.body}>{employment
+        ? '조금 더 안정적으로 일할 수 있는 일자리를 추천해드릴까요?'
+        : '현재 상황에 맞는 생활비·금융지원을 찾아봐드릴까요?'}</Text>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={accept}>
+        <Text style={styles.action}>네</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={decline}>
+        <Text style={styles.action}>아니요</Text>
+      </Pressable>
+    </View>
+  </View>;
+}
+
 export function ReferralOffer({ signal, busy, accept, decline }: {
   signal: CareSignal; busy: boolean; accept: () => void; decline: () => void;
 }) {
   return <View style={styles.followUp}>
     <View style={styles.referralCard}>
       <Text style={styles.alertIcon} accessibilityLabel="주의">🚨</Text>
-      <Text style={styles.body}>{signal.recheckedAt
-        ? '다시 확인했지만 아직 거래가 확인되지 않았어요. 담당자에게 연결을 요청할까요?'
-        : '어려움이 이어지고 있어요. 담당자에게 연결을 요청할까요?'}</Text>
+      <Text style={styles.body}>현재 상황이 계속되어 걱정돼요. 김민지 담당자님께 이 사안을 전달해드릴까요?</Text>
       <Pressable accessibilityRole="button" disabled={busy} onPress={accept}>
         <Text style={styles.action}>{busy ? '처리 중…' : '연결 요청하기'}</Text>
       </Pressable>
