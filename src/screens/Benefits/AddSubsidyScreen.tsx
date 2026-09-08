@@ -13,6 +13,14 @@ export default function AddSubsidyScreen() {
   const [loading, setLoading] = useState(false);
   const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
 
+  // 이미 등록된 지원금은 화면에 처음 들어왔을 때부터 "추가됨"으로 보이게 한다
+  useEffect(() => {
+    mySubsidyApi
+      .list()
+      .then((items) => setAddedIds(new Set(items.map((i) => i.subsidyId))))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     const q = query.trim();
     if (q.length === 0) {
