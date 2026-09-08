@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../constants/colors';
+import { formatDday } from '../../utils/today';
 
 // 홈 화면 맨 위, 온보딩과 같은 톤으로 "이 서비스가 어떤 곳인지"를 색과 마스코트로 보여주는
 // 브랜드 배너. 정보 카드들(D-day/자산/지출 등)은 전부 흰 배경이라 화면이 자칫 밋밋해 보일 수
@@ -10,16 +11,21 @@ import { colors, radius, spacing } from '../../constants/colors';
 // 3) 밖으로 퍼졌다 사라지는 링 이펙트(물결처럼), 4) 뜰 때 옅어지고 내려올 때 진해지는 그림자,
 // 5) 반짝이 세 개가 서로 다른 타이밍에 깜빡이는 것까지 겹쳐서 좀 더 화사하게 만들었다.
 //
+// D-day 배지("자립수당 종료까지 D-N")는 평소(파랑)/D-365 모드(주황) 둘 다에서 뜨고,
+// days가 있을 때만 나타난다 — 칩 자체는 두 모드가 완전히 같은 마크업을 공유하고
+// 배경·글자색만 분기한다(modeChipDefault/D365, modeChipTextDefault/D365).
+//
 // isD365Mode가 true면(자립수당 종료까지 D-365 이하로 들어와서 SupportEndForecastCard가
-// 뜨는 것과 같은 조건) 문구가 "D-365 모드에 들어갔어요"로 바뀌고, 흰 칩이 하나 뜨고,
-// 배경색도 평소의 브랜드 블루 대신 주황(colors.warning)으로 바뀐다 — "더 강조해달라"는
-// 요청을 받아서, 문구만 바꾸는 대신 색까지 확실히 달라지게 했다. 아래 SupportEndForecastCard도
+// 뜨는 것과 같은 조건) 문구가 "D-365 모드에 들어갔어요"로 바뀌고, 배경색도 평소의
+// 브랜드 블루 대신 주황(colors.warning)으로 바뀐다 — "더 강조해달라"는 요청을 받아서,
+// 문구만 바꾸는 대신 색까지 확실히 달라지게 했다. 아래 SupportEndForecastCard도
 // 같은 주황 톤을 테두리·배지에 써서 두 카드가 "지금은 D-365 모드"라는 같은 이야기를 한다.
 interface Props {
   isD365Mode?: boolean;
+  days?: number;
 }
 
-export default function HomeHeroCard({ isD365Mode = false }: Props) {
+export default function HomeHeroCard({ isD365Mode = false, days }: Props) {
   const float = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
   const ripple = useRef(new Animated.Value(0)).current;
@@ -110,11 +116,15 @@ export default function HomeHeroCard({ isD365Mode = false }: Props) {
   return (
     <View style={[styles.card, isD365Mode && styles.cardD365]}>
       <View style={styles.textCol}>
+        {days != null ? (
+          <View style={[styles.modeChip, isD365Mode ? styles.modeChipD365 : styles.modeChipDefault]}>
+            <Text style={[styles.modeChipText, isD365Mode ? styles.modeChipTextD365 : styles.modeChipTextDefault]}>
+              자립수당 종료까지 {formatDday(days)}
+            </Text>
+          </View>
+        ) : null}
         {isD365Mode ? (
           <>
-            <View style={styles.modeChip}>
-              <Text style={styles.modeChipText}>D-365 MODE</Text>
-            </View>
             <Text style={[styles.headline, styles.headlineD365]}>자립동행과 함께{'\n'}D-365 모드에 들어갔어요</Text>
             <Text style={[styles.sub, styles.subD365]}>지금부터는 지출·예적금을 더 촘촘하게{'\n'}챙겨드릴게요</Text>
           </>
@@ -152,7 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
-    paddingVertical: spacing.lg + spacing.xs,
+    paddingVertical: spacing.lg - spacing.xs + 1,
     paddingLeft: spacing.md,
     paddingRight: spacing.lg,
     overflow: 'hidden',
@@ -167,13 +177,16 @@ const styles = StyleSheet.create({
   subD365: { color: 'rgba(0, 32, 83, 0.68)' },
   modeChip: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.white,
     borderRadius: radius.full,
     paddingVertical: 3,
     paddingHorizontal: spacing.sm,
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  modeChipText: { fontSize: 11, fontWeight: '800', color: colors.warning, letterSpacing: 0.3 },
+  modeChipDefault: { backgroundColor: colors.primaryDark },
+  modeChipD365: { backgroundColor: colors.white },
+  modeChipText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  modeChipTextDefault: { color: colors.white },
+  modeChipTextD365: { color: colors.warning },
   mascotWrap: { width: 84, height: 84, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm },
   ring: {
     position: 'absolute',

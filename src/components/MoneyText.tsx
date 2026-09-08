@@ -23,7 +23,9 @@ export default function MoneyText({ amount, variant = 'medium', color, animate =
   );
 }
 
-function useCountUp(target: number, enabled: boolean) {
+// 다른 화면에서 금액이 아닌 숫자(예: 절감 테이블의 "줄이면" 열)에도 같은 카운트업을
+// 쓰고 싶을 때를 위해 내보낸다.
+export function useCountUp(target: number, enabled: boolean) {
   const [display, setDisplay] = useState(enabled ? 0 : target);
   const prevTargetRef = useRef(enabled ? 0 : target);
 

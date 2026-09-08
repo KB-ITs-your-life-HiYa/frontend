@@ -59,18 +59,14 @@ function RunwayMeter({ months }: { months: number }) {
 
   useEffect(() => {
     if (!trackWidth) return;
-    // 처음엔 1.5초 만에 왕복해서 너무 빠르고 시선을 뺏는다는 피드백을 받았다.
-    // 훨씬 느리게(4.2초) 흐르게 하고, 한 바퀴 돌고 나면 잠깐 쉬었다가 다시 시작하게 해서
-    // 눈에 계속 걸리는 대신 가끔 눈에 띄는 정도의 은은한 디테일이 되도록 했다.
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(travel, { toValue: 1, duration: 4200, easing: Easing.linear, useNativeDriver: true }),
-        Animated.timing(travel, { toValue: 0, duration: 0, useNativeDriver: true }), // 즉시 처음 위치로
-        Animated.delay(900),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
+    // 처음엔 1.5초 만에 왕복하고 계속 반복해서 너무 빠르고 시선을 계속 뺏는다는 피드백을
+    // 받았다. 2초 동안 흐르게 하고, 화면 진입 시 딱 한 번만 재생한 뒤 절벽 끝에서
+    // 멈추게 했다 — 반복 재생 대신 "한 번 흘러가서 끊긴다"는 장면 자체로 끝나게 하는 것.
+    // 탭 네비게이터가 화면을 언마운트하지 않고 유지하므로(RootNavigator, unmountOnBlur 미설정)
+    // 다른 탭에 갔다가 돌아와도 이 effect는 다시 실행되지 않아 재생도 반복되지 않는다.
+    const animation = Animated.timing(travel, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true });
+    animation.start();
+    return () => animation.stop();
   }, [trackWidth]);
 
   const coinTranslateX = travel.interpolate({

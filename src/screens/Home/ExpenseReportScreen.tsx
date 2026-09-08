@@ -137,8 +137,11 @@ function SummaryCard({ data, onOpenBudget }: { data: ExpenseReportResponse; onOp
 }
 
 const CHART_WIDTH = 296;
-const CHART_HEIGHT = 150;
-const CHART_MARGIN = { top: 16, right: 8, bottom: 20, left: 34 };
+// "(만원)" 단위 라벨과 Y축 최상단 눈금 숫자가 겹쳐서, top margin을 12px 늘려 그 사이에
+// 라벨이 들어갈 자리를 만들었다. CHART_HEIGHT도 같이 12px 늘려서 PLOT_HEIGHT(실제 막대가
+// 그려지는 영역)는 그대로 유지 — 막대 높이·눈금 계산은 전혀 안 바뀌고, 위쪽 여백만 새로 생긴다.
+const CHART_HEIGHT = 162;
+const CHART_MARGIN = { top: 28, right: 8, bottom: 20, left: 34 };
 const PLOT_WIDTH = CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right;
 const PLOT_HEIGHT = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom;
 
@@ -161,7 +164,7 @@ function TrendCard({ data }: { data: ExpenseReportResponse }) {
       <Text style={styles.cardTitle}>전체 지출</Text>
 
       <Svg width="100%" height={CHART_HEIGHT} viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}>
-        <SvgText x={0} y={12} fontSize={10} fill={colors.textTertiary}>
+        <SvgText x={0} y={10} fontSize={10} fill={colors.textTertiary}>
           (만원)
         </SvgText>
 
