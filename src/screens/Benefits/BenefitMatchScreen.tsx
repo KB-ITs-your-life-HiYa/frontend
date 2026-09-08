@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import SectionHeader from '../../components/SectionHeader';
-import ListRow from '../../components/ListRow';
 import { colors, radius, spacing } from '../../constants/colors';
 import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
 import { benefitApi, mySubsidyApi } from '../../services/benefit';
@@ -184,15 +183,6 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
             </View>
           ) : null}
 
-          <View style={styles.mySubsidiesRow}>
-            <ListRow
-              icon="wallet-outline"
-              label="받고 있는 지원금 관리"
-              value={receivingCount != null ? `${receivingCount}개` : undefined}
-              onPress={() => navigation.navigate('MySubsidies')}
-            />
-          </View>
-
           <Text style={styles.infoGroupLabel}>설문 응답</Text>
           {surveyChips.length > 0 ? (
             <View style={styles.infoChipRow}>
@@ -208,6 +198,14 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
 
           <Pressable style={styles.retakeButton} onPress={onRetake}>
             <Text style={styles.retakeButtonText}>설문 다시하기</Text>
+          </Pressable>
+
+          <Pressable style={styles.mySubsidiesRow} onPress={() => navigation.navigate('MySubsidies')}>
+            <Text style={styles.mySubsidiesLabel}>받고 있는 지원금 관리</Text>
+            <View style={styles.mySubsidiesValueRow}>
+              <Text style={styles.mySubsidiesValue}>{receivingCount != null ? `${receivingCount}건` : ''}</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </View>
           </Pressable>
         </>
       ) : null}
@@ -303,11 +301,14 @@ const styles = StyleSheet.create({
   infoChipOutlineText: { fontSize: 12, fontWeight: '500', color: colors.textSecondary },
   infoEmptyText: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.xs },
   mySubsidiesRow: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    marginBottom: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.sm + 2,
   },
+  mySubsidiesLabel: { fontSize: 14, color: colors.textPrimary },
+  mySubsidiesValueRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  mySubsidiesValue: { fontSize: 14, fontWeight: '600', color: colors.primary },
   filterHint: { fontSize: 12, color: colors.textTertiary, marginTop: 4, marginBottom: spacing.sm },
   retakeButton: {
     alignItems: 'center',
