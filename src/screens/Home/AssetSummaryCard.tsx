@@ -119,7 +119,7 @@ function AssetRow({
       </View>
       <View style={styles.rowTextCol}>
         <Text style={styles.rowLabel}>{label}</Text>
-        <MoneyText amount={amount} variant="medium" />
+        <MoneyText amount={amount} variant="medium" animate={false} />
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
     </PressableScale>

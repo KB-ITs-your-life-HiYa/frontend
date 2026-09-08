@@ -2,7 +2,6 @@ import React from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import ScreenHeader from '../../components/ScreenHeader';
 import CareBanner from './CareBanner';
-import DdayBanner from './DdayBanner';
 import HomeHeroCard from './HomeHeroCard';
 import TodayPlayPreviewCard from './TodayPlayPreviewCard';
 import { colors, spacing } from '../../constants/colors';
@@ -25,7 +24,7 @@ function isD365Mode(daysUntilSupportEnd: number | null | undefined) {
 // 순서대로 살짝 떠오르며 나타나서(useRiseIn) 첫인상이 덜 밋밋하게 느껴지게 했다.
 // 각 카드 안의 숫자·막대 애니메이션은 카드 컴포넌트 자체에 들어있다.
 //
-// 맨 위 브랜드 히어로 카드(HomeHeroCard)로 색을 한 번 보여주고, D-day 배너 → 기존 지표
+// 맨 위 브랜드 히어로 카드(HomeHeroCard)로 색을 한 번 보여주고, 그 아래로 기존 지표
 // 카드들 → 맨 아래 오늘의 놀이 미리보기까지 배치했다. D-365 모드에 들어오면 히어로 카드의
 // 문구가 바뀌고, 아래 SupportEndForecastCard도 노란 톤으로 눈에 띄게 바뀐다.
 // (AI 안심 지수 히어로 카드 / 자립정착금 배분 진입점은 이번 라운드에서 다시 뺐다 — CareStatusHero.tsx,
@@ -35,7 +34,6 @@ export default function HomeScreen() {
   const d365Mode = isD365Mode(member?.daysUntilSupportEnd);
 
   const heroRise = useRiseIn(0, true);
-  const ddayRise = useRiseIn(70, true);
   const forecastRise = useRiseIn(140, true);
   const assetRise = useRiseIn(210, true);
   const expenseRise = useRiseIn(280, true);
@@ -47,13 +45,8 @@ export default function HomeScreen() {
       <CareBanner />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Animated.View style={heroRise}>
-          <HomeHeroCard isD365Mode={d365Mode} />
+          <HomeHeroCard isD365Mode={d365Mode} days={member?.daysUntilSupportEnd ?? undefined} />
         </Animated.View>
-        {member?.daysUntilSupportEnd != null ? (
-          <Animated.View style={ddayRise}>
-            <DdayBanner days={member.daysUntilSupportEnd} />
-          </Animated.View>
-        ) : null}
         <Animated.View style={forecastRise}>
           <SupportEndForecastCard />
         </Animated.View>
