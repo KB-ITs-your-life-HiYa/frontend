@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,15 +27,18 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    benefitApi
-      .matches()
-      .then((data) => {
-        setCategories(data);
-        setActiveCategory(data[0]?.category ?? null);
-      })
-      .catch(() => setError(true));
-  }, []);
+  // "받고 있는 지원금"을 추가/삭제하고 돌아왔을 때도 추천 목록이 바뀌므로 화면에 다시 보일 때마다 갱신한다
+  useFocusEffect(
+    useCallback(() => {
+      benefitApi
+        .matches()
+        .then((data) => {
+          setCategories(data);
+          setActiveCategory((prev) => (prev && data.some((c) => c.category === prev) ? prev : data[0]?.category ?? null));
+        })
+        .catch(() => setError(true));
+    }, [])
+  );
 
   const activeItems = useMemo(
     () => categories?.find((c) => c.category === activeCategory)?.items ?? [],
