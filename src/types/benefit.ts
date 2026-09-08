@@ -75,4 +75,6 @@ export interface SubsidySummary {
   subsidyId: number;
   name: string;
   orgName: string | null;
+  /** 이름이 같은 지역별 지원금을 구분하기 위한 값. orgName이 없을 때 대신 보여준다 */
+  regionLabel: string | null;
 }

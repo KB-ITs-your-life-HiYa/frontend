@@ -73,7 +73,9 @@ export default function AddSubsidyScreen() {
                   <Text style={styles.rowName} numberOfLines={1}>
                     {item.name}
                   </Text>
-                  {item.orgName ? <Text style={styles.rowOrg}>{item.orgName}</Text> : null}
+                  {item.orgName || item.regionLabel ? (
+                    <Text style={styles.rowOrg}>{item.orgName ?? item.regionLabel}</Text>
+                  ) : null}
                 </View>
                 <Pressable
                   style={[styles.addButton, added ? styles.addButtonDone : null]}

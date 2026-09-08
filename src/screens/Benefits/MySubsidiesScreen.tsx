@@ -46,7 +46,9 @@ export default function MySubsidiesScreen() {
             <View key={item.subsidyId} style={styles.row}>
               <View style={styles.rowText}>
                 <Text style={styles.rowName}>{item.name}</Text>
-                {item.orgName ? <Text style={styles.rowOrg}>{item.orgName}</Text> : null}
+                {item.orgName || item.regionLabel ? (
+                  <Text style={styles.rowOrg}>{item.orgName ?? item.regionLabel}</Text>
+                ) : null}
               </View>
               <Pressable
                 style={styles.removeButton}
