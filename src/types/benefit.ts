@@ -8,7 +8,8 @@ export type HousingType =
   | 'MONTHLY_RENT'
   | 'FREE'
   | 'SELF_RELIANCE_HOUSE'
-  | 'PUBLIC_RENTAL';
+  | 'PUBLIC_RENTAL'
+  | 'UNSTABLE';
 
 /** 백엔드 member_survey_tag CHECK 제약과 같은 값 */
 export type SurveyTag =

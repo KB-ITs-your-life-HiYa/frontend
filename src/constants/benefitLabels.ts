@@ -15,6 +15,7 @@ export const HOUSING_TYPE_LABELS: Record<HousingType, string> = {
   FREE: '무상거주',
   SELF_RELIANCE_HOUSE: '자립생활관 등',
   PUBLIC_RENTAL: '공공임대',
+  UNSTABLE: '일시 거주 / 거처 불안정',
 };
 
 export const SURVEY_TAG_LABELS: Record<SurveyTag, string> = {
