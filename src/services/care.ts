@@ -1,5 +1,7 @@
 import { api } from './api';
-import type { CareButtonRequest, CareFreeTextRequest, CareSummary } from '../types/care';
+import type {
+  CareButtonRequest, CareFreeTextRequest, CareSummary, FaqAskRequest, FaqAskResponse,
+} from '../types/care';
 
 const BASE = '/members/me/care';
 export const careApi = {
@@ -8,6 +10,8 @@ export const careApi = {
     api.post<CareSummary>(`${BASE}/signals/${signalId}/responses`, request),
   message: (signalId: number, request: CareFreeTextRequest) =>
     api.post<CareSummary>(`${BASE}/signals/${signalId}/messages`, request),
+  // 지원금/독립지원/서비스 이용 자유질문. 위 signal 기반 상담과 달리 signalId 가 필요 없다
+  faq: (request: FaqAskRequest) => api.post<FaqAskResponse>(`${BASE}/faq`, request),
   retryGemini: (signalId: number, responseId: number) =>
     api.post<CareSummary>(`${BASE}/signals/${signalId}/responses/${responseId}/gemini`, {}),
   policies: (signalId: number, responseId: number) =>

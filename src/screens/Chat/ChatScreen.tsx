@@ -8,7 +8,9 @@ import ScreenHeader from '../../components/ScreenHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { useCare } from '../../hooks/useCare';
 import { careApi } from '../../services/care';
-import type { CareButtonRequest, CareChoice, CareFreeTextRequest } from '../../types/care';
+import type {
+  CareButtonRequest, CareChoice, CareFreeTextRequest, FaqAskResponse, FaqSource,
+} from '../../types/care';
 import TypingIndicator from './TypingIndicator';
 import { formatConversationText } from '../../utils/conversationText';
 import AiAvatar from '../../components/AiAvatar';
@@ -50,6 +52,19 @@ function QuickReplyButton({ label, disabled, onPress }: {
   </Pressable>;
 }
 
+// 지원금/독립지원/서비스 자유질문 답변에 붙는 근거 문서 표시. 눌러도 되는 버튼이 아니라 출처 라벨이다.
+function FaqSources({ sources }: { sources: FaqSource[] }) {
+  if (sources.length === 0) return null;
+  return <View style={styles.faqSourceRow}>
+    <Ionicons name="document-text-outline" size={13} color={colors.textTertiary} />
+    <Text style={styles.faqSourceText} numberOfLines={2}>
+      출처: {sources.map(source => source.title).join(', ')}
+    </Text>
+  </View>;
+}
+
+interface FaqEntry { question: string; answer?: string; sources?: FaqSource[]; error?: boolean; }
+
 export default function ChatScreen() {
   const { summary, busy, error, run, refresh } = useCare();
   const [editingSignal, setEditingSignal] = useState<number | null>(null);
@@ -58,6 +73,13 @@ export default function ChatScreen() {
   const [pendingUserText, setPendingUserText] = useState<string | null>(null);
   const [localTyping, setLocalTyping] = useState(false);
   const [awaitingAi, setAwaitingAi] = useState(false);
+  // 활성 케어 신호가 없을 때 같은 입력창으로 받는 지원금/독립지원/서비스 자유질문 스레드.
+  // 신호 대화(summary.signals)와 달리 서버에 저장되지 않는 화면 안 로컬 상태다.
+  const [faqThread, setFaqThread] = useState<FaqEntry[]>([]);
+  const [faqBusy, setFaqBusy] = useState(false);
+  // 신호가 있어도 사용자가 "다른 게 궁금하신가요?" 를 눌러 자유질문 모드로 강제 전환할 수 있다.
+  // 신호가 아예 없으면 어차피 자유질문 모드만 의미가 있다.
+  const [forcedFaq, setForcedFaq] = useState(false);
   const [referralLoadingId, setReferralLoadingId] = useState<number | null>(null);
   const [revealedReferralIds, setRevealedReferralIds] = useState<number[]>([]);
   const localTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,6 +93,9 @@ export default function ChatScreen() {
     setReferralLoadingId(null);
     setRevealedReferralIds([]);
     policyAttempts.current.clear();
+    setFaqThread([]);
+    setFaqBusy(false);
+    setForcedFaq(false);
     return () => {
       if (localTypingTimer.current) clearTimeout(localTypingTimer.current);
       if (referralTimer.current) clearTimeout(referralTimer.current);
@@ -83,6 +108,7 @@ export default function ChatScreen() {
   const scroll = useRef<ScrollView>(null);
   const signals = summary?.signals ?? [];
   const signal = [...signals].reverse().find(item => item.status === 'OPEN');
+  const faqMode = !signal || forcedFaq;
   const options = signal && !busy && signal.replies.length === 0 && editingSignal !== signal.id ? signal.options : [];
   const editing = signal && editingSignal === signal.id && signal.status === 'OPEN';
   const interactionBusy = busy || localTyping || awaitingAi || pendingUserText !== null;
@@ -170,7 +196,13 @@ export default function ChatScreen() {
 
   async function sendMessage() {
     const value = input.trim();
-    if (!signal || interactionBusy || !value) return;
+    if (interactionBusy || faqBusy || !value) return;
+    if (faqMode) {
+      setInput('');
+      await sendFaqMessage(value);
+      return;
+    }
+    if (!signal) return;
     const key = `${signal.id}:${value}`;
     if (messageRetry.current?.key !== key) messageRetry.current = {
       key, request: { input: value, requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}` },
@@ -186,6 +218,32 @@ export default function ChatScreen() {
     }
     setPendingUserText(null);
     setAwaitingAi(false);
+  }
+
+  // 지원금/독립지원/서비스 자유질문. summary 를 안 건드리는 별개 상태라 useCare 의 run() 을 쓰지 않는다.
+  async function sendFaqMessage(question: string, retryIndex?: number) {
+    const index = retryIndex ?? faqThread.length;
+    setFaqThread(prev => {
+      const next = [...prev];
+      next[index] = { question };
+      return next;
+    });
+    setFaqBusy(true);
+    try {
+      const response: FaqAskResponse = await careApi.faq({ question });
+      setFaqThread(prev => {
+        const next = [...prev];
+        next[index] = { question, answer: response.answer, sources: response.grounded ? response.sources : [] };
+        return next;
+      });
+    } catch {
+      setFaqThread(prev => {
+        const next = [...prev];
+        next[index] = { question, error: true };
+        return next;
+      });
+    }
+    setFaqBusy(false);
   }
 
   async function retryAi(conversationId: number, replyId: number) {
@@ -228,12 +286,19 @@ export default function ChatScreen() {
       }}
     />
     {/* TODO(DELETE): 케어 시연용 날짜 조작 끝 */}
+    {signal && <Pressable accessibilityRole="button" style={styles.modeToggle}
+      onPress={() => setForcedFaq(current => !current)}>
+      <Ionicons name={forcedFaq ? 'arrow-back' : 'help-circle-outline'} size={15} color={colors.chatAccent} />
+      <Text style={styles.modeToggleText}>
+        {forcedFaq ? '케어 상담으로 돌아가기' : '다른 게 궁금하신가요? 자유롭게 물어보기'}
+      </Text>
+    </Pressable>}
     <ScrollView ref={scroll} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled"
       onContentSizeChange={() => {
         if (signals.length > 1 || (signal?.replies.length ?? 0) > 0) scroll.current?.scrollToEnd({ animated: true });
       }}>
       <View style={styles.todayPillWrap}><View style={styles.todayPill}><Text style={styles.todayText}>오늘</Text></View></View>
-      {signal ? <>
+      {!faqMode && signal ? <>
         {signals.map(conversation => <React.Fragment key={conversation.id}>
           <Message text={conversation.prompt} time={conversation.detectedAt} />
           {conversation.replies.map(reply => <React.Fragment key={reply.id}>
@@ -275,7 +340,24 @@ export default function ChatScreen() {
             label={option.value === 'LATER' ? '다음에 확인할게요' : option.label}
             onPress={() => { void send(option.value); }} />)}
         </View>}
-      </> : summary && <Message text={summary.reminders[0]?.message ?? '아직 상담이 필요한 이상징후가 없어요.'} />}
+      </> : <>
+        {faqThread.length === 0 && <Message text={!signal
+          ? (summary?.reminders[0]?.message ?? '아직 상담이 필요한 이상징후가 없어요. 지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요.')
+          : '지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요.'} />}
+        {faqThread.map((entry, index) => <React.Fragment key={index}>
+          <Message text={entry.question} user />
+          {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
+            <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
+            <Pressable accessibilityRole="button" disabled={faqBusy}
+              onPress={() => { void sendFaqMessage(entry.question, index); }}>
+              <Text style={styles.quickReplyText}>다시 시도하기</Text>
+            </Pressable>
+          </View> : entry.answer === undefined ? <TypingIndicator /> : <>
+            <Message text={entry.answer} />
+            {entry.sources && <FaqSources sources={entry.sources} />}
+          </>}
+        </React.Fragment>)}
+      </>}
       {busy && !summary && <ActivityIndicator color={colors.chatAccent} accessibilityLabel="상담 불러오는 중" />}
       {error && <View style={styles.errorWrap} accessibilityRole="alert">
         <Text style={styles.errorText}>{error}</Text>
@@ -287,13 +369,13 @@ export default function ChatScreen() {
     <View style={styles.inputRow}>
       <View style={styles.inputCapsule}>
         <TextInput style={styles.input} placeholder="궁금한 점을 물어보세요" placeholderTextColor={colors.textTertiary}
-          value={input} onChangeText={setInput} maxLength={1000} editable={Boolean(signal) && !interactionBusy}
+          value={input} onChangeText={setInput} maxLength={1000} editable={!interactionBusy && !faqBusy}
           returnKeyType="send" onSubmitEditing={() => { void sendMessage(); }}
           accessibilityLabel="궁금한 점을 물어보세요" />
         <Pressable accessibilityRole="button" accessibilityLabel="메시지 전송"
-          accessibilityState={{ disabled: !signal || interactionBusy || !input.trim() }}
-          disabled={!signal || interactionBusy || !input.trim()} onPress={() => { void sendMessage(); }}
-          style={[styles.sendButton, (!signal || interactionBusy || !input.trim()) && styles.disabled]}>
+          accessibilityState={{ disabled: interactionBusy || faqBusy || !input.trim() }}
+          disabled={interactionBusy || faqBusy || !input.trim()} onPress={() => { void sendMessage(); }}
+          style={[styles.sendButton, (interactionBusy || faqBusy || !input.trim()) && styles.disabled]}>
           <Ionicons name="send" size={20} color={colors.white} />
         </Pressable>
       </View>
@@ -341,4 +423,10 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 13, lineHeight: 20 },
   aiStatus: { marginLeft: spacing.xl + spacing.md + spacing.xs, marginBottom: spacing.md,
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  faqSourceRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4,
+    marginLeft: spacing.xl + spacing.md, marginTop: -spacing.sm, marginBottom: spacing.md, maxWidth: '86%' },
+  faqSourceText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.textTertiary },
+  modeToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modeToggleText: { fontSize: 13, lineHeight: 18, color: colors.chatAccent, fontWeight: '600' },
 });
