@@ -136,6 +136,7 @@ export default function HousingCalendarScreen() {
 
   const [notices, setNotices] = useState<HousingNoticeSummary[]>([]);
   const [ongoingNotices, setOngoingNotices] = useState<HousingNoticeSummary[]>([]);
+  const [ongoingExpanded, setOngoingExpanded] = useState(false);
   const [regionMessage, setRegionMessage] = useState<string | null>(null);
   // mock: 서버 정렬 API 붙기 전 클라이언트에서 목록만 재정렬
   const [noticeSort, setNoticeSort] = useState<NoticeSortMode>('recommended');
@@ -147,6 +148,7 @@ export default function HousingCalendarScreen() {
     let cancelled = false;
     async function load() {
       setLoading(true);
+      setOngoingExpanded(false);
       setError(null);
       try {
         const res = await housingApi.getCalendar({
@@ -260,6 +262,10 @@ export default function HousingCalendarScreen() {
     () => sortNotices(ongoingNotices, noticeSort),
     [ongoingNotices, noticeSort]
   );
+
+  const visibleOngoingNotices = ongoingExpanded
+    ? sortedOngoingNotices
+    : sortedOngoingNotices.slice(0, 3);
 
   const selectedDateLabel = `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`;
   const noticeSortLabel =
@@ -582,7 +588,9 @@ export default function HousingCalendarScreen() {
                     <Card style={styles.noticeCard}>
                       <View style={styles.noticeTopRow}>
                         <Text style={[styles.noticeTitle, keepWord]}>{notice.title}</Text>
-                        <Text style={styles.noticeDday}>{daysLeft >= 0 ? `마감 D-${daysLeft}` : '마감'}</Text>
+                        <Text style={[styles.noticeDday, daysLeft === 0 && styles.noticeDdayToday]}>
+                          {daysLeft === 0 ? '마감 D-DAY' : daysLeft > 0 ? `마감 D-${daysLeft}` : '마감'}
+                        </Text>
                       </View>
                       <Text style={[styles.noticeMeta, keepWord]}>
                         {notice.institution} · {notice.supplyType}
@@ -620,7 +628,7 @@ export default function HousingCalendarScreen() {
                 <Text style={styles.emptyText}>상시 모집 공고가 없어요</Text>
               </Card>
             ) : (
-              sortedOngoingNotices.map((notice) => {
+              visibleOngoingNotices.map((notice) => {
                 const start = parseLocalDate(notice.beginDate);
                 const end = parseLocalDate(notice.endDate);
                 return (
@@ -650,6 +658,21 @@ export default function HousingCalendarScreen() {
           </>
         )}
 
+        {!loading && !error && sortedOngoingNotices.length > 3 && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ongoingExpanded ? '상시 모집 접기' : '상시 모집 더보기'}
+            accessibilityState={{ expanded: ongoingExpanded }}
+            onPress={() => setOngoingExpanded((expanded) => !expanded)}
+            style={styles.ongoingToggle}
+          >
+            <Text style={styles.ongoingToggleText}>
+              {ongoingExpanded ? '접기' : `더보기 (${sortedOngoingNotices.length - 3}개)`}
+            </Text>
+            <Ionicons name={ongoingExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} />
+          </Pressable>
+        )}
+
         <SectionHeader
           title="주거지원 일정"
           actionLabel="전체보기→"
@@ -660,19 +683,17 @@ export default function HousingCalendarScreen() {
             <Text style={styles.emptyText}>다가오는 일정이 없어요</Text>
           </Card>
         ) : (
-          <Card style={styles.scheduleListCard}>
-            {previewSchedule.map((item, index) => (
-              <React.Fragment key={item.id}>
-                <ScheduleItemRow
-                  item={item}
-                  onPress={() =>
-                    navigation.navigate('HousingNoticeDetail', { noticeId: item.noticeId })
-                  }
-                />
-                {index < previewSchedule.length - 1 ? <View style={styles.divider} /> : null}
-              </React.Fragment>
+          <View style={styles.scheduleListCard}>
+            {previewSchedule.map((item) => (
+              <ScheduleItemRow
+                key={item.id}
+                item={item}
+                onPress={() =>
+                  navigation.navigate('HousingNoticeDetail', { noticeId: item.noticeId })
+                }
+              />
             ))}
-          </Card>
+          </View>
         )}
 
         <View style={styles.checklistSectionHeader}>
@@ -1036,7 +1057,7 @@ const styles = StyleSheet.create({
   legendDotHollow: { borderWidth: 1.6, borderColor: colors.textSecondary, backgroundColor: 'transparent' },
   legendText: { fontSize: 11, color: colors.textSecondary },
   legendHint: { fontSize: 11, color: colors.textTertiary },
-  noticeCard: { gap: spacing.md },
+  noticeCard: { gap: spacing.sm },
   noticeTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
   noticeTitle: {
     flex: 1,
@@ -1046,12 +1067,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   noticeDday: { fontSize: 12, fontWeight: '700', color: colors.primary, marginTop: 2 },
+  noticeDdayToday: { color: colors.danger },
   noticeMeta: { fontSize: 12, color: colors.textTertiary, lineHeight: 18 },
-  noticeTrack: { height: 6, borderRadius: radius.full, backgroundColor: colors.track, overflow: 'hidden', marginTop: 2 },
+  noticeTrack: { height: 6, borderRadius: radius.full, backgroundColor: colors.track, overflow: 'hidden' },
   noticeTrackFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.primary },
-  noticeDatesRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+  noticeDatesRow: { flexDirection: 'row', justifyContent: 'space-between' },
   noticeDateText: { fontSize: 11, color: colors.textTertiary, lineHeight: 16 },
   rollingCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  ongoingToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    minHeight: 44,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+  },
+  ongoingToggleText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   rollingIcon: {
     width: 36,
     height: 36,
@@ -1075,8 +1107,7 @@ const styles = StyleSheet.create({
   dayTextDimmed: { color: colors.textTertiary, opacity: 0.5 },
   dayTextToday: { color: colors.white, fontWeight: '700' },
   dayTextSelected: { color: colors.primary, fontWeight: '700' },
-  scheduleListCard: { paddingVertical: 4 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  scheduleListCard: { gap: spacing.sm },
   noticeHeaderBlock: { gap: 8, marginBottom: spacing.sm },
   sortToolbar: {
     flexDirection: 'row',

@@ -76,19 +76,17 @@ export default function ScheduleListScreen() {
             <Text style={styles.emptyText}>다가오는 일정이 없어요</Text>
           </Card>
         ) : (
-          <Card style={styles.listCard}>
-            {events.map((item, index) => (
-              <React.Fragment key={item.id}>
-                <ScheduleItemRow
-                  item={item}
-                  onPress={() =>
-                    navigation.navigate('HousingNoticeDetail', { noticeId: item.noticeId })
-                  }
-                />
-                {index < events.length - 1 ? <View style={styles.divider} /> : null}
-              </React.Fragment>
+          <View style={styles.listCard}>
+            {events.map((item) => (
+              <ScheduleItemRow
+                key={item.id}
+                item={item}
+                onPress={() =>
+                  navigation.navigate('HousingNoticeDetail', { noticeId: item.noticeId })
+                }
+              />
             ))}
-          </Card>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -99,8 +97,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1 },
   content: { padding: spacing.md, paddingBottom: spacing.xl },
-  listCard: { paddingVertical: 4 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  listCard: { gap: spacing.sm },
   statusWrap: { alignItems: 'center', paddingVertical: spacing.lg },
   errorText: { fontSize: 13, color: colors.danger, textAlign: 'center' },
   emptyText: { fontSize: 13, color: colors.textTertiary },
