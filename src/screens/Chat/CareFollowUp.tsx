@@ -18,7 +18,6 @@ export function PolicyCards({ policies, busy, retry }: {
   if (policies.status === 'PENDING') return busy ? <TypingIndicator /> : null;
 
   return <View style={styles.policyGroup}>
-    {policies.status === 'PENDING' && <Text style={styles.caption}>관련 정책을 확인할 준비가 되었어요.</Text>}
     {policies.cards.map(card => <View key={card.id} style={styles.card}>
       <Text style={styles.caption}>{card.category === 'FINANCE' ? '생활비·금융지원' : '취업·일경험'} · 온통청년</Text>
       <Text style={styles.title}>{card.name}</Text>
