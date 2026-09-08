@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import SectionHeader from '../../components/SectionHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
-import { benefitApi } from '../../services/benefit';
+import { benefitApi, mySubsidyApi } from '../../services/benefit';
 import { useAuth } from '../../contexts/AuthContext';
 import type { CategoryMatchResponse, MatchCondition, SubsidyMatchResponse, SurveyResponse } from '../../types/benefit';
 
@@ -27,15 +27,18 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    benefitApi
-      .matches()
-      .then((data) => {
-        setCategories(data);
-        setActiveCategory(data[0]?.category ?? null);
-      })
-      .catch(() => setError(true));
-  }, []);
+  // "받고 있는 지원금"을 추가/삭제하고 돌아왔을 때도 추천 목록이 바뀌므로 화면에 다시 보일 때마다 갱신한다
+  useFocusEffect(
+    useCallback(() => {
+      benefitApi
+        .matches()
+        .then((data) => {
+          setCategories(data);
+          setActiveCategory((prev) => (prev && data.some((c) => c.category === prev) ? prev : data[0]?.category ?? null));
+        })
+        .catch(() => setError(true));
+    }, [])
+  );
 
   const activeItems = useMemo(
     () => categories?.find((c) => c.category === activeCategory)?.items ?? [],
@@ -123,7 +126,19 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
 
 function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () => void }) {
   const { member } = useAuth();
+  const navigation = useNavigation<any>();
   const [open, setOpen] = useState(true);
+  const [receivingCount, setReceivingCount] = useState<number | null>(null);
+
+  // MySubsidies 화면 다녀온 뒤 이 화면으로 돌아올 때마다 개수를 새로 불러온다
+  useFocusEffect(
+    useCallback(() => {
+      mySubsidyApi
+        .list()
+        .then((items) => setReceivingCount(items.length))
+        .catch(() => setReceivingCount(null));
+    }, [])
+  );
 
   const acctChips: string[] = [];
   if (member) {
@@ -186,6 +201,14 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
 
           <Pressable style={styles.retakeButton} onPress={onRetake}>
             <Text style={styles.retakeButtonText}>설문 다시하기</Text>
+          </Pressable>
+
+          <Pressable style={styles.mySubsidiesRow} onPress={() => navigation.navigate('MySubsidies')}>
+            <Text style={styles.mySubsidiesLabel}>받고 있는 지원금 관리</Text>
+            <View style={styles.mySubsidiesValueRow}>
+              <Text style={styles.mySubsidiesValue}>{receivingCount != null ? `${receivingCount}건` : ''}</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </View>
           </Pressable>
         </>
       ) : null}
@@ -280,6 +303,15 @@ const styles = StyleSheet.create({
   },
   infoChipOutlineText: { fontSize: 12, fontWeight: '500', color: colors.textSecondary },
   infoEmptyText: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.xs },
+  mySubsidiesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.sm + 2,
+  },
+  mySubsidiesLabel: { fontSize: 14, color: colors.textPrimary },
+  mySubsidiesValueRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  mySubsidiesValue: { fontSize: 14, fontWeight: '600', color: colors.primary },
   filterHint: { fontSize: 12, color: colors.textTertiary, marginTop: 4, marginBottom: spacing.sm },
   retakeButton: {
     alignItems: 'center',
