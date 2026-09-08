@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextStyle, View } from 'react-native';
+import Card from '../../components/Card';
 import { colors, radius, spacing } from '../../constants/colors';
 import { diffDays, formatMonthDay, TODAY } from '../../utils/today';
 import {
@@ -17,7 +18,7 @@ type Props = {
   onPress?: () => void;
 };
 
-// 시안 ncard 스타일: 왼쪽 색 바 + 종류/자격 뱃지 + 제목 + 안내
+// 종류/자격 뱃지 + 제목 + 안내
 export default function ScheduleItemRow({ item, onPress }: Props) {
   const dday = diffDays(item.date, TODAY);
   const ddayLabel = dday === 0 ? 'D-DAY' : dday > 0 ? `D-${dday}` : `D+${Math.abs(dday)}`;
@@ -25,7 +26,7 @@ export default function ScheduleItemRow({ item, onPress }: Props) {
   const shortWeekday = weekdayLabel(item.date).replace('요일', '');
 
   const content = (
-    <View style={[styles.row, isDeadline ? styles.rowEnd : styles.rowStart]}>
+    <Card style={styles.row}>
       <View style={styles.body}>
         <View style={styles.badgeRow}>
           <View style={[styles.kindBadge, isDeadline ? styles.kindBadgeEnd : styles.kindBadgeStart]}>
@@ -64,7 +65,7 @@ export default function ScheduleItemRow({ item, onPress }: Props) {
           {formatMonthDay(item.date)}({shortWeekday}) {kindLabel(item.kind)} · {item.institution}
         </Text>
       </View>
-    </View>
+    </Card>
   );
 
   if (!onPress) return content;
@@ -73,15 +74,9 @@ export default function ScheduleItemRow({ item, onPress }: Props) {
 
 const styles = StyleSheet.create({
   row: {
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.sm,
-    paddingLeft: spacing.md,
-    borderLeftWidth: 4,
-    gap: spacing.sm,
+    padding: spacing.md,
   },
-  rowStart: { borderLeftColor: colors.primary },
-  rowEnd: { borderLeftColor: colors.danger },
-  body: { gap: 6 },
+  body: { gap: spacing.sm + spacing.xs },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
   kindBadge: {
     paddingHorizontal: 9,
@@ -105,6 +100,6 @@ const styles = StyleSheet.create({
   eligOkText: { color: colors.success },
   eligCheckText: { color: '#B45309' },
   eligNoText: { color: colors.textSecondary },
-  title: { fontSize: 14.5, fontWeight: '700', color: colors.textPrimary, lineHeight: 22 },
+  title: { fontSize: 14.5, fontWeight: '700', color: colors.textPrimary, lineHeight: 25 },
   meta: { fontSize: 12, color: colors.textTertiary, lineHeight: 18 },
 });
