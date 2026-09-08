@@ -6,7 +6,7 @@ import Button from '../../components/Button';
 import ProgressBar from '../../components/ProgressBar';
 import ToggleRow from '../../components/ToggleRow';
 import { colors, radius, spacing } from '../../constants/colors';
-import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
+import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS } from '../../constants/benefitLabels';
 import { surveyApi } from '../../services/benefit';
 import type { EmploymentStatus, HousingType, SurveyResponse, SurveyTag } from '../../types/benefit';
 
@@ -17,7 +17,7 @@ interface Props {
   onCancel?: () => void;
 }
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 
 const HOUSEHOLD_OPTIONS = [1, 2, 3, 4, 5, 6]; // 6 = "6인 이상"
 
@@ -53,20 +53,8 @@ const EMPLOYMENT_OPTIONS: { value: EmploymentStatus; label: string }[] = (
 ).map((value) => ({ value, label: EMPLOYMENT_STATUS_LABELS[value] }));
 
 const HOUSING_OPTIONS: { value: HousingType; label: string }[] = (
-  ['OWNED', 'JEONSE', 'MONTHLY_RENT', 'FREE', 'SELF_RELIANCE_HOUSE', 'PUBLIC_RENTAL'] as HousingType[]
+  ['OWNED', 'JEONSE', 'MONTHLY_RENT', 'FREE', 'SELF_RELIANCE_HOUSE', 'PUBLIC_RENTAL', 'UNSTABLE'] as HousingType[]
 ).map((value) => ({ value, label: HOUSING_TYPE_LABELS[value] }));
-
-const TAG_OPTIONS: { value: SurveyTag; label: string }[] = (
-  [
-    'SINGLE_PARENT',
-    'MULTICULTURAL',
-    'DISABILITY',
-    'MULTI_CHILD',
-    'SEVERE_ILLNESS',
-    'NORTH_KOREAN_DEFECTOR',
-    'GRANDPARENT_FAMILY',
-  ] as SurveyTag[]
-).map((value) => ({ value, label: SURVEY_TAG_LABELS[value] }));
 
 export default function SurveyScreen({ onComplete, initialValues, onCancel }: Props) {
   const [step, setStep] = useState(1);
@@ -86,7 +74,11 @@ export default function SurveyScreen({ onComplete, initialValues, onCancel }: Pr
   );
   const [housingType, setHousingType] = useState<HousingType | null>(initialValues?.housingType ?? null);
 
-  const [tags, setTags] = useState<SurveyTag[]>(initialValues?.tags ?? []);
+  // 예전 설문에서 저장된 한부모·다문화 등 태그는 이제 화면에서 고를 수 없으니,
+  // "다시하기"로 들어와도 여기서 걸러내 완료를 누르면 자연스럽게 정리되게 한다
+  const [tags, setTags] = useState<SurveyTag[]>(
+    (initialValues?.tags ?? []).filter((tag) => tag === 'DISABILITY')
+  );
 
   const toggleTag = (tag: SurveyTag) => {
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
@@ -137,7 +129,9 @@ export default function SurveyScreen({ onComplete, initialValues, onCancel }: Pr
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {step === 1 ? (
-          <StepSection title="가구 정보를 알려주세요" subtitle="본인을 포함한 가구원 수예요">
+          <StepSection title="기본 정보를 알려주세요">
+            <Text style={styles.groupLabel}>가구원 수</Text>
+            <Text style={styles.groupDescription}>본인을 포함한 가구원 수예요</Text>
             <OptionGrid>
               {HOUSEHOLD_OPTIONS.map((n) => (
                 <OptionChip
@@ -154,6 +148,14 @@ export default function SurveyScreen({ onComplete, initialValues, onCancel }: Pr
                 description="국민기초생활보장, 차상위 등에 해당하면 켜주세요"
                 value={isBenefitRecipient}
                 onValueChange={setIsBenefitRecipient}
+              />
+            </Card>
+            <Card style={styles.toggleCard}>
+              <ToggleRow
+                title="장애가 있어요"
+                description="장애인복지카드 소지 등에 해당하면 켜주세요"
+                value={tags.includes('DISABILITY')}
+                onValueChange={() => toggleTag('DISABILITY')}
               />
             </Card>
           </StepSection>
@@ -215,21 +217,6 @@ export default function SurveyScreen({ onComplete, initialValues, onCancel }: Pr
                   label={opt.label}
                   selected={housingType === opt.value}
                   onPress={() => setHousingType(opt.value)}
-                />
-              ))}
-            </OptionGrid>
-          </StepSection>
-        ) : null}
-
-        {step === 4 ? (
-          <StepSection title="해당하는 특성이 있나요?" subtitle="해당하는 항목만 골라주세요. 없으면 그냥 다음으로 넘어가도 돼요">
-            <OptionGrid>
-              {TAG_OPTIONS.map((opt) => (
-                <OptionChip
-                  key={opt.value}
-                  label={opt.label}
-                  selected={tags.includes(opt.value)}
-                  onPress={() => toggleTag(opt.value)}
                 />
               ))}
             </OptionGrid>
@@ -323,6 +310,7 @@ const styles = StyleSheet.create({
   stepTitle: { fontSize: 19, fontWeight: '800', color: colors.textPrimary },
   stepSubtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.xs },
   groupLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  groupDescription: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
   groupHint: { fontSize: 11, color: colors.textTertiary, marginTop: 4 },
   optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
   optionChip: {
