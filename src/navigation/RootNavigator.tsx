@@ -23,6 +23,8 @@ import TopicDetailScreen from '../screens/Play/TopicDetailScreen';
 import ScheduleListScreen from '../screens/Housing/ScheduleListScreen';
 import HousingNoticeDetailScreen from '../screens/Housing/HousingNoticeDetailScreen';
 import BenefitDetailScreen from '../screens/Benefits/BenefitDetailScreen';
+import MySubsidiesScreen from '../screens/Benefits/MySubsidiesScreen';
+import AddSubsidyScreen from '../screens/Benefits/AddSubsidyScreen';
 import CareScreen from '../screens/Care/CareScreen';
 import CounselorPortalScreen from '../screens/Counselor/CounselorPortalScreen';
 
@@ -53,6 +55,8 @@ export type RootStackParamList = {
   ScheduleList: undefined;
   HousingNoticeDetail: { noticeId: number };
   BenefitDetail: { item: SubsidyMatchResponse };
+  MySubsidies: undefined;
+  AddSubsidy: undefined;
   AccountList: { type: AccountType };
   Notifications: undefined;
   ExpenseReport: undefined;
@@ -160,6 +164,8 @@ export default function RootNavigator() {
                 <Stack.Screen name="ScheduleList" component={ScheduleListScreen} />
                 <Stack.Screen name="HousingNoticeDetail" component={HousingNoticeDetailScreen} />
                 <Stack.Screen name="BenefitDetail" component={BenefitDetailScreen} />
+                <Stack.Screen name="MySubsidies" component={MySubsidiesScreen} />
+                <Stack.Screen name="AddSubsidy" component={AddSubsidyScreen} />
               </>
               )
           ) : (

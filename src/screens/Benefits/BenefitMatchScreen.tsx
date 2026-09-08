@@ -1,13 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import SectionHeader from '../../components/SectionHeader';
+import ListRow from '../../components/ListRow';
 import { colors, radius, spacing } from '../../constants/colors';
 import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
-import { benefitApi } from '../../services/benefit';
+import { benefitApi, mySubsidyApi } from '../../services/benefit';
 import { useAuth } from '../../contexts/AuthContext';
 import type { CategoryMatchResponse, MatchCondition, SubsidyMatchResponse, SurveyResponse } from '../../types/benefit';
 
@@ -123,7 +124,19 @@ export default function BenefitMatchScreen({ survey, onRetake }: Props) {
 
 function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () => void }) {
   const { member } = useAuth();
+  const navigation = useNavigation<any>();
   const [open, setOpen] = useState(true);
+  const [receivingCount, setReceivingCount] = useState<number | null>(null);
+
+  // MySubsidies 화면 다녀온 뒤 이 화면으로 돌아올 때마다 개수를 새로 불러온다
+  useFocusEffect(
+    useCallback(() => {
+      mySubsidyApi
+        .list()
+        .then((items) => setReceivingCount(items.length))
+        .catch(() => setReceivingCount(null));
+    }, [])
+  );
 
   const acctChips: string[] = [];
   if (member) {
@@ -170,6 +183,15 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
               </View>
             </View>
           ) : null}
+
+          <View style={styles.mySubsidiesRow}>
+            <ListRow
+              icon="wallet-outline"
+              label="받고 있는 지원금 관리"
+              value={receivingCount != null ? `${receivingCount}개` : undefined}
+              onPress={() => navigation.navigate('MySubsidies')}
+            />
+          </View>
 
           <Text style={styles.infoGroupLabel}>설문 응답</Text>
           {surveyChips.length > 0 ? (
@@ -280,6 +302,12 @@ const styles = StyleSheet.create({
   },
   infoChipOutlineText: { fontSize: 12, fontWeight: '500', color: colors.textSecondary },
   infoEmptyText: { fontSize: 12, color: colors.textTertiary, marginBottom: spacing.xs },
+  mySubsidiesRow: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    marginBottom: spacing.xs,
+  },
   filterHint: { fontSize: 12, color: colors.textTertiary, marginTop: 4, marginBottom: spacing.sm },
   retakeButton: {
     alignItems: 'center',

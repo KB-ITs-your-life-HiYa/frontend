@@ -69,3 +69,10 @@ export interface CategoryMatchResponse {
   category: string;
   items: SubsidyMatchResponse[];
 }
+
+/** GET /subsidies?q=, GET /members/me/subsidies 응답 항목 */
+export interface SubsidySummary {
+  subsidyId: number;
+  name: string;
+  orgName: string | null;
+}
