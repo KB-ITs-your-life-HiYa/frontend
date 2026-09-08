@@ -74,7 +74,11 @@ export default function SurveyScreen({ onComplete, initialValues, onCancel }: Pr
   );
   const [housingType, setHousingType] = useState<HousingType | null>(initialValues?.housingType ?? null);
 
-  const [tags, setTags] = useState<SurveyTag[]>(initialValues?.tags ?? []);
+  // 예전 설문에서 저장된 한부모·다문화 등 태그는 이제 화면에서 고를 수 없으니,
+  // "다시하기"로 들어와도 여기서 걸러내 완료를 누르면 자연스럽게 정리되게 한다
+  const [tags, setTags] = useState<SurveyTag[]>(
+    (initialValues?.tags ?? []).filter((tag) => tag === 'DISABILITY')
+  );
 
   const toggleTag = (tag: SurveyTag) => {
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
