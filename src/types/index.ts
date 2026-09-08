@@ -165,3 +165,24 @@ export interface BudgetResponse {
   totalAmount: number | null; // 이번 달 총예산을 설정하지 않았으면 null
   categories: BudgetCategoryItem[];
 }
+
+/** GET /members/me/budget/chat/summary 응답. 생활비 관리 탭 진입 시 첫 화면 카드에 쓴다 */
+export interface BudgetChatSummaryResponse {
+  month: string; // YYYY-MM
+  totalExpense: number;
+  totalBudget: number | null; // 이번 달 총예산을 설정하지 않았으면 null
+  remaining: number | null; // totalBudget 이 null 이면 null
+  progressRatio: number | null; // 0~100. totalBudget 이 null 이거나 0이면 null
+  greeting: string;
+  quickQuestions: string[];
+}
+
+/** POST /members/me/budget/chat/ask 요청/응답. 지원금/독립지원 자유질문(FaqAskRequest)과는 별개 경로 */
+export interface BudgetChatAskRequest {
+  question: string;
+}
+
+export interface BudgetChatAskResponse {
+  answer: string;
+  inScope: boolean;
+}

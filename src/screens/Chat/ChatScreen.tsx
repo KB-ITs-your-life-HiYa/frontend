@@ -8,9 +8,12 @@ import ScreenHeader from '../../components/ScreenHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { useCare } from '../../hooks/useCare';
 import { careApi } from '../../services/care';
+import { api } from '../../services/api';
+import { formatWon, formatWonShort } from '../../utils/money';
 import type {
   CareButtonRequest, CareChoice, CareFreeTextRequest, FaqAskResponse, FaqSource,
 } from '../../types/care';
+import type { BudgetChatAskResponse, BudgetChatSummaryResponse } from '../../types';
 import TypingIndicator from './TypingIndicator';
 import { formatConversationText } from '../../utils/conversationText';
 import AiAvatar from '../../components/AiAvatar';
@@ -45,6 +48,12 @@ function supportQuestion(type: 'MISSED_SAVING' | 'MISSED_PAYMENT' | 'INCOME_MISS
   return type === 'INCOME_MISSING'
     ? '조금 더 안정적으로 일할 수 있는 일자리를 추천해드릴까요?'
     : '현재 상황에 맞는 생활비·금융지원을 찾아봐드릴까요?';
+}
+
+// "2026-09" -> "9월"
+function budgetMonthLabel(month: string) {
+  const [, monthPart] = month.split('-');
+  return `${Number(monthPart)}월`;
 }
 
 function Message({ text, time, user = false }: { text: string; time?: string; user?: boolean }) {
@@ -86,7 +95,33 @@ function FaqSources({ sources }: { sources: FaqSource[] }) {
   </View>;
 }
 
+// 생활비 관리 탭의 첫 화면 요약 카드. 목업의 "9월 생활비 한눈에"와 같은 자리.
+function BudgetSummaryCard({ summary }: { summary: BudgetChatSummaryResponse }) {
+  const ratio = Math.min(100, Math.max(0, summary.progressRatio ?? 0));
+  const over = summary.remaining !== null && summary.remaining < 0;
+  return <View style={styles.budgetCard}>
+    <Text style={styles.budgetCardTitle}>{budgetMonthLabel(summary.month)} 생활비 한눈에</Text>
+    {summary.totalBudget !== null && <View style={styles.budgetProgressTrack}>
+      <View style={[styles.budgetProgressFill, { width: `${ratio}%` }, over && styles.budgetProgressFillOver]} />
+    </View>}
+    <View style={styles.budgetStatRow}>
+      <View style={styles.budgetStatBox}>
+        <Text style={styles.budgetStatLabel}>이번 달 지출</Text>
+        <Text style={styles.budgetStatValue}>{formatWon(summary.totalExpense)}</Text>
+      </View>
+      <View style={styles.budgetStatBox}>
+        <Text style={styles.budgetStatLabel}>{over ? '예산 초과' : '남은 여유'}</Text>
+        <Text style={[styles.budgetStatValue, over && styles.budgetStatValueOver]}>
+          {summary.remaining === null ? '예산 미설정' : `약 ${formatWonShort(summary.remaining)}`}
+        </Text>
+      </View>
+    </View>
+  </View>;
+}
+
 interface FaqEntry { question: string; answer?: string; sources?: FaqSource[]; error?: boolean; }
+interface BudgetChatEntry { question: string; answer?: string; error?: boolean; }
+type ChatTab = 'basic' | 'budget' | 'care';
 
 export default function ChatScreen() {
   const { summary, busy, error, run, refresh } = useCare();
@@ -96,13 +131,18 @@ export default function ChatScreen() {
   const [pendingUserText, setPendingUserText] = useState<string | null>(null);
   const [localTyping, setLocalTyping] = useState(false);
   const [awaitingAi, setAwaitingAi] = useState(false);
-  // 활성 케어 신호가 없을 때 같은 입력창으로 받는 지원금/독립지원/서비스 자유질문 스레드.
-  // 신호 대화(summary.signals)와 달리 서버에 저장되지 않는 화면 안 로컬 상태다.
+  // "기본 채팅" 탭: 지원금/독립지원/서비스 이용 자유질문. 신호 대화(summary.signals)와 달리
+  // 서버에 저장되지 않는 화면 안 로컬 상태다.
   const [faqThread, setFaqThread] = useState<FaqEntry[]>([]);
   const [faqBusy, setFaqBusy] = useState(false);
-  // 신호가 있어도 사용자가 "다른 게 궁금하신가요?" 를 눌러 자유질문 모드로 강제 전환할 수 있다.
-  // 신호가 아예 없으면 어차피 자유질문 모드만 의미가 있다.
-  const [forcedFaq, setForcedFaq] = useState(false);
+  // "생활비 관리" 탭: 이번 달 지출/예산 요약 카드 + 그 데이터를 근거로 한 자유질문.
+  const [budgetSummary, setBudgetSummary] = useState<BudgetChatSummaryResponse | null>(null);
+  const [budgetSummaryLoading, setBudgetSummaryLoading] = useState(false);
+  const [budgetSummaryError, setBudgetSummaryError] = useState(false);
+  const [budgetThread, setBudgetThread] = useState<BudgetChatEntry[]>([]);
+  const [budgetBusy, setBudgetBusy] = useState(false);
+  // 사용자가 직접 고른 탭. null 이면 신호 유무로 자동 결정한다 (신호가 있으면 스마트 케어, 없으면 기본 채팅).
+  const [manualTab, setManualTab] = useState<ChatTab | null>(null);
   const [referralLoadingId, setReferralLoadingId] = useState<number | null>(null);
   const [revealedReferralIds, setRevealedReferralIds] = useState<number[]>([]);
   const [supportChoices, setSupportChoices] = useState<Record<number, 'YES' | 'NO'>>({});
@@ -118,7 +158,12 @@ export default function ChatScreen() {
     setSupportChoices({});
     setFaqThread([]);
     setFaqBusy(false);
-    setForcedFaq(false);
+    setBudgetSummary(null);
+    setBudgetSummaryLoading(false);
+    setBudgetSummaryError(false);
+    setBudgetThread([]);
+    setBudgetBusy(false);
+    setManualTab(null);
     return () => {
       if (localTypingTimer.current) clearTimeout(localTypingTimer.current);
       if (referralTimer.current) clearTimeout(referralTimer.current);
@@ -131,7 +176,8 @@ export default function ChatScreen() {
   const scroll = useRef<ScrollView>(null);
   const signals = summary?.signals ?? [];
   const signal = [...signals].reverse().find(item => item.status === 'OPEN');
-  const faqMode = !signal || forcedFaq;
+  const activeTab: ChatTab = manualTab ?? (signal ? 'care' : 'basic');
+  const openSignalCount = signals.filter(item => item.status === 'OPEN').length;
   const options = signal && !busy && signal.replies.length === 0 && editingSignal !== signal.id ? signal.options : [];
   const editing = signal && editingSignal === signal.id && signal.status === 'OPEN';
   const interactionBusy = busy || localTyping || awaitingAi || pendingUserText !== null;
@@ -171,6 +217,19 @@ export default function ChatScreen() {
     }
   }, [signal]);
 
+  // 생활비 관리 탭에 처음 들어갈 때 딱 한 번 요약 카드를 불러온다.
+  useEffect(() => {
+    if (activeTab !== 'budget' || budgetSummary) return;
+    let cancelled = false;
+    setBudgetSummaryLoading(true);
+    setBudgetSummaryError(false);
+    api.get<BudgetChatSummaryResponse>('/members/me/budget/chat/summary')
+      .then(data => { if (!cancelled) setBudgetSummary(data); })
+      .catch(() => { if (!cancelled) setBudgetSummaryError(true); })
+      .finally(() => { if (!cancelled) setBudgetSummaryLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, budgetSummary]);
+
   async function send(choice: CareChoice, change: Pick<CareButtonRequest, 'expectedDay' | 'expectedAmount'> = {}) {
     if (!signal || interactionBusy) return;
     if (choice === 'CHANGED' && change.expectedDay === undefined && change.expectedAmount === undefined) {
@@ -206,10 +265,15 @@ export default function ChatScreen() {
 
   async function sendMessage() {
     const value = input.trim();
-    if (interactionBusy || faqBusy || !value) return;
-    if (faqMode) {
+    if (interactionBusy || faqBusy || budgetBusy || !value) return;
+    if (activeTab === 'basic') {
       setInput('');
       await sendFaqMessage(value);
+      return;
+    }
+    if (activeTab === 'budget') {
+      setInput('');
+      await sendBudgetMessage(value);
       return;
     }
     if (!signal) return;
@@ -256,6 +320,32 @@ export default function ChatScreen() {
     setFaqBusy(false);
   }
 
+  // 생활비 자유질문. 이 사용자의 실제 이번 달 지출/예산/고정비/저축 데이터를 근거로 답한다.
+  async function sendBudgetMessage(question: string, retryIndex?: number) {
+    const index = retryIndex ?? budgetThread.length;
+    setBudgetThread(prev => {
+      const next = [...prev];
+      next[index] = { question };
+      return next;
+    });
+    setBudgetBusy(true);
+    try {
+      const response = await api.post<BudgetChatAskResponse>('/members/me/budget/chat/ask', { question });
+      setBudgetThread(prev => {
+        const next = [...prev];
+        next[index] = { question, answer: response.answer };
+        return next;
+      });
+    } catch {
+      setBudgetThread(prev => {
+        const next = [...prev];
+        next[index] = { question, error: true };
+        return next;
+      });
+    }
+    setBudgetBusy(false);
+  }
+
   async function retryAi(conversationId: number, replyId: number) {
     if (interactionBusy) return;
     setAwaitingAi(true);
@@ -287,6 +377,10 @@ export default function ChatScreen() {
     requestAnimationFrame(() => scroll.current?.scrollToEnd({ animated: true }));
   }
 
+  // 스마트 케어 탭인데 지금 답장을 받을 열린 신호가 없으면 입력창을 잠근다 — 보낼 곳이 없기 때문이다.
+  const careTabIdle = activeTab === 'care' && !signal;
+  const inputDisabled = interactionBusy || faqBusy || budgetBusy || careTabIdle;
+
   return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScreenHeader />
     <CareBanner summary={summary} busy={busy} error={error} />
@@ -307,18 +401,28 @@ export default function ChatScreen() {
       }}
     />
     {/* TODO(DELETE): 케어 시연용 날짜 조작 끝 */}
-    {signal && <Pressable accessibilityRole="button" style={styles.modeToggle}
-      onPress={() => setForcedFaq(current => !current)}>
-      <Ionicons name={forcedFaq ? 'arrow-back' : 'help-circle-outline'} size={15} color={colors.chatAccent} />
-      <Text style={styles.modeToggleText}>
-        {forcedFaq ? '케어 상담으로 돌아가기' : '다른 게 궁금하신가요? 자유롭게 물어보기'}
-      </Text>
-    </Pressable>}
+    <View style={styles.tabBar}>
+      <Pressable accessibilityRole="button" accessibilityState={{ selected: activeTab === 'basic' }}
+        style={[styles.tabPill, activeTab === 'basic' && styles.tabPillActive]} onPress={() => setManualTab('basic')}>
+        <Text numberOfLines={1} style={[styles.tabPillText, activeTab === 'basic' && styles.tabPillTextActive]}>기본 채팅</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityState={{ selected: activeTab === 'budget' }}
+        style={[styles.tabPill, activeTab === 'budget' && styles.tabPillActive]} onPress={() => setManualTab('budget')}>
+        <Text numberOfLines={1} style={[styles.tabPillText, activeTab === 'budget' && styles.tabPillTextActive]}>생활비 관리</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityState={{ selected: activeTab === 'care' }}
+        style={[styles.tabPill, activeTab === 'care' && styles.tabPillActive]} onPress={() => setManualTab('care')}>
+        <Text numberOfLines={1} style={[styles.tabPillText, activeTab === 'care' && styles.tabPillTextActive]}>스마트 케어</Text>
+        {openSignalCount > 0 && <View style={styles.tabBadge}><Text style={styles.tabBadgeText}>{openSignalCount}</Text></View>}
+      </Pressable>
+    </View>
     <ScrollView ref={scroll} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled"
       onContentSizeChange={() => {
         if (signals.length > 1 || (signal?.replies.length ?? 0) > 0) scroll.current?.scrollToEnd({ animated: true });
       }}>
-      {!faqMode && signal ? <>
+      {activeTab === 'care' ? <>
+        {signals.length === 0 && <Message text={summary?.reminders[0]?.message
+          ?? '아직 확인이 필요한 이상징후가 없어요. 이상징후가 감지되면 여기로 먼저 알려드릴게요.'} />}
         {signals.map(conversation => <React.Fragment key={conversation.id}>
           <DaySeparator date={conversation.detectedAt} referenceDate={summary?.asOf} />
           <Message text={conversation.prompt} time={conversation.detectedAt} />
@@ -381,10 +485,33 @@ export default function ChatScreen() {
             label={option.value === 'LATER' ? '다음에 확인할게요' : option.label}
             onPress={() => { void send(option.value); }} />)}
         </View>}
+      </> : activeTab === 'budget' ? <>
+        <Message text={budgetSummary?.greeting
+          ?? '이번 달 생활비 흐름을 같이 살펴볼게요. 궁금한 항목을 물어보시면, 아래 요약과 연결해서 설명해 드릴게요.'} />
+        {budgetSummaryLoading && <ActivityIndicator color={colors.chatAccent} accessibilityLabel="생활비 요약 불러오는 중" />}
+        {budgetSummaryError && <View style={styles.errorWrap} accessibilityRole="alert">
+          <Text style={styles.errorText}>생활비 요약을 불러오지 못했어요.</Text>
+          <Pressable accessibilityRole="button" onPress={() => setBudgetSummary(null)}>
+            <Text style={styles.quickReplyText}>다시 확인하기</Text>
+          </Pressable>
+        </View>}
+        {budgetSummary && <BudgetSummaryCard summary={budgetSummary} />}
+        {budgetThread.length === 0 && budgetSummary && budgetSummary.quickQuestions.length > 0 && <View style={styles.quickReplyCol}>
+          {budgetSummary.quickQuestions.map(question => <QuickReplyButton key={question} disabled={budgetBusy}
+            label={question} onPress={() => { void sendBudgetMessage(question); }} />)}
+        </View>}
+        {budgetThread.map((entry, index) => <React.Fragment key={index}>
+          <Message text={entry.question} user />
+          {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
+            <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
+            <Pressable accessibilityRole="button" disabled={budgetBusy}
+              onPress={() => { void sendBudgetMessage(entry.question, index); }}>
+              <Text style={styles.quickReplyText}>다시 시도하기</Text>
+            </Pressable>
+          </View> : entry.answer === undefined ? <TypingIndicator /> : <Message text={entry.answer} />}
+        </React.Fragment>)}
       </> : <>
-        {faqThread.length === 0 && <Message text={!signal
-          ? '아직 상담이 필요한 이상징후가 없어요. 지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요.'
-          : '지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요.'} />}
+        {faqThread.length === 0 && <Message text="지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요." />}
         {faqThread.map((entry, index) => <React.Fragment key={index}>
           <Message text={entry.question} user />
           {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
@@ -409,14 +536,16 @@ export default function ChatScreen() {
     </ScrollView>
     <View style={styles.inputRow}>
       <View style={styles.inputCapsule}>
-        <TextInput style={styles.input} placeholder="궁금한 점을 물어보세요" placeholderTextColor={colors.textTertiary}
-          value={input} onChangeText={setInput} maxLength={1000} editable={!interactionBusy && !faqBusy}
+        <TextInput style={styles.input}
+          placeholder={careTabIdle ? '확인이 필요한 이상징후가 없어요' : '궁금한 점을 물어보세요'}
+          placeholderTextColor={colors.textTertiary}
+          value={input} onChangeText={setInput} maxLength={1000} editable={!inputDisabled}
           returnKeyType="send" onSubmitEditing={() => { void sendMessage(); }}
           accessibilityLabel="궁금한 점을 물어보세요" />
         <Pressable accessibilityRole="button" accessibilityLabel="메시지 전송"
-          accessibilityState={{ disabled: interactionBusy || faqBusy || !input.trim() }}
-          disabled={interactionBusy || faqBusy || !input.trim()} onPress={() => { void sendMessage(); }}
-          style={[styles.sendButton, (interactionBusy || faqBusy || !input.trim()) && styles.disabled]}>
+          accessibilityState={{ disabled: inputDisabled || !input.trim() }}
+          disabled={inputDisabled || !input.trim()} onPress={() => { void sendMessage(); }}
+          style={[styles.sendButton, (inputDisabled || !input.trim()) && styles.disabled]}>
           <Ionicons name="send" size={20} color={colors.white} />
         </Pressable>
       </View>
@@ -467,7 +596,27 @@ const styles = StyleSheet.create({
   faqSourceRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4,
     marginLeft: spacing.xl + spacing.md, marginTop: -spacing.sm, marginBottom: spacing.md, maxWidth: '86%' },
   faqSourceText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.textTertiary },
-  modeToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  modeToggleText: { fontSize: 13, lineHeight: 18, color: colors.chatAccent, fontWeight: '600' },
+  tabBar: { flexDirection: 'row', gap: 4, backgroundColor: colors.track, borderRadius: radius.full,
+    padding: 4, marginHorizontal: spacing.md + spacing.xs, marginTop: spacing.sm, marginBottom: spacing.xs },
+  tabPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    paddingVertical: spacing.sm, paddingHorizontal: 2, borderRadius: radius.full },
+  tabPillActive: { backgroundColor: colors.chatAccent },
+  tabPillText: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: colors.textSecondary },
+  tabPillTextActive: { color: colors.white },
+  tabBadge: { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+    backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  tabBadgeText: { fontSize: 10, lineHeight: 14, fontWeight: '800', color: colors.white },
+  budgetCard: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md + spacing.xs, marginBottom: spacing.md, gap: spacing.md,
+    shadowColor: colors.chatShadow, shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  budgetCardTitle: { fontSize: 15, lineHeight: 21, fontWeight: '700', color: colors.textPrimary },
+  budgetProgressTrack: { height: 8, borderRadius: radius.full, backgroundColor: colors.track, overflow: 'hidden' },
+  budgetProgressFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.chatAccent },
+  budgetProgressFillOver: { backgroundColor: colors.danger },
+  budgetStatRow: { flexDirection: 'row', gap: spacing.sm },
+  budgetStatBox: { flex: 1, backgroundColor: colors.background, borderRadius: radius.sm,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.md, gap: 2 },
+  budgetStatLabel: { fontSize: 12, lineHeight: 17, color: colors.textTertiary },
+  budgetStatValue: { fontSize: 17, lineHeight: 23, fontWeight: '700', color: colors.textPrimary },
+  budgetStatValueOver: { color: colors.danger },
 });
