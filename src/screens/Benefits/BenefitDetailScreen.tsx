@@ -1,6 +1,6 @@
-import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
@@ -8,7 +8,9 @@ import Badge from '../../components/Badge';
 import Button from '../../components/Button';
 import { colors, radius, spacing } from '../../constants/colors';
 import { formatWon } from '../../utils/money';
+import { housingApi } from '../../services/housing';
 import type { MatchCondition, SubsidyMatchResponse } from '../../types/benefit';
+import type { RelatedNoticeSummary } from '../../types/housing';
 
 type DetailRoute = RouteProp<{ BenefitDetail: { item: SubsidyMatchResponse } }, 'BenefitDetail'>;
 
@@ -42,9 +44,27 @@ function ConditionRow({ condition }: { condition: MatchCondition }) {
 
 export default function BenefitDetailScreen() {
   const route = useRoute<DetailRoute>();
+  const navigation = useNavigation<any>();
   const { item } = route.params;
 
   const deadline = item.applyDeadlineDate ? formatIsoDate(item.applyDeadlineDate) : item.applyDeadlineRaw;
+
+  const [relatedNotices, setRelatedNotices] = useState<RelatedNoticeSummary[]>([]);
+
+  useEffect(() => {
+    housingApi
+      .getRelatedToSubsidy(item.subsidyId)
+      .then(setRelatedNotices)
+      .catch(() => setRelatedNotices([]));
+  }, [item.subsidyId]);
+
+  const openRelatedNotices = () => {
+    if (relatedNotices.length === 1) {
+      navigation.navigate('HousingNoticeDetail', { noticeId: relatedNotices[0].id });
+    } else {
+      navigation.navigate('MainTabs', { screen: 'Housing' });
+    }
+  };
 
   async function openUrl(url: string) {
     try {
@@ -104,6 +124,24 @@ export default function BenefitDetailScreen() {
           </>
         ) : null}
 
+        {relatedNotices.length > 0 ? (
+          <Pressable onPress={openRelatedNotices}>
+            <Card style={styles.relatedCard}>
+              <View style={styles.relatedIcon}>
+                <Ionicons name="business" size={16} color={colors.primary} />
+              </View>
+              <View style={styles.relatedTextCol}>
+                <Text style={styles.relatedTitle}>지금 접수 중인 관련 공고</Text>
+                <Text style={styles.relatedSubtitle} numberOfLines={1}>
+                  {relatedNotices[0].title}
+                  {relatedNotices.length > 1 ? ` 외 ${relatedNotices.length - 1}건` : ''}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </Card>
+          </Pressable>
+        ) : null}
+
         <Text style={styles.listHeading}>신청 정보</Text>
         <Card style={styles.sectionCard}>
           <InfoRow label="신청 방법" value={item.applyMethod} />
@@ -160,4 +198,22 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 13, color: colors.textTertiary, minWidth: 72 },
   infoValue: { flex: 1, fontSize: 13, color: colors.textPrimary, textAlign: 'right', lineHeight: 18 },
   linkButton: { marginTop: spacing.sm },
+  relatedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  relatedIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  relatedTextCol: { flex: 1 },
+  relatedTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  relatedSubtitle: { fontSize: 12, color: colors.textTertiary, marginTop: 1 },
 });

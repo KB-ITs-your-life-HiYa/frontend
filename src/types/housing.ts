@@ -38,6 +38,12 @@ export interface HousingEligibilityProfile {
   updatedAt: string;
 }
 
+/** GET /housing/notices/related-to-subsidy/{id} 응답 항목. 지원금 상세의 "관련 공고" 카드용 */
+export interface RelatedNoticeSummary {
+  id: number;
+  title: string;
+}
+
 export type HousingEligibilityProfileRequest = Pick<
   HousingEligibilityProfile,
   'isHomeless' | 'isMarried' | 'youthPurchasePriorityBasis'

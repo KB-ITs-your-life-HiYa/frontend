@@ -9,6 +9,7 @@ import {
   HousingEligibilityProfile,
   HousingEligibilityProfileRequest,
   HousingNoticeDetail,
+  RelatedNoticeSummary,
   UpdateHousingChecklistItemRequest,
 } from '../types/housing';
 
@@ -35,6 +36,9 @@ export const housingApi = {
   },
 
   getNoticeDetail: (id: number) => api.get<HousingNoticeDetail>(`/housing/notices/${id}`),
+
+  getRelatedToSubsidy: (subsidyId: number) =>
+    api.get<RelatedNoticeSummary[]>(`/housing/notices/related-to-subsidy/${subsidyId}`),
 
   getEligibilityProfile: () => api.get<HousingEligibilityProfile | null>(ELIGIBILITY_PROFILE),
 
