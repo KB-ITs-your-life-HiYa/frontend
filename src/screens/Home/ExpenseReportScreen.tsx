@@ -8,7 +8,7 @@ import MoneyText from '../../components/MoneyText';
 import ProgressBar from '../../components/ProgressBar';
 import { colors, radius, spacing } from '../../constants/colors';
 import { api, ApiError } from '../../services/api';
-import { ExpenseCategoryBreakdown, ExpenseReportResponse } from '../../types';
+import { Coaching, ExpenseCategoryBreakdown, ExpenseReportResponse } from '../../types';
 import { formatWon } from '../../utils/money';
 import BudgetModal from './BudgetModal';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './expenseCategoryMeta';
@@ -85,6 +85,7 @@ export default function ExpenseReportScreen() {
           <Text style={styles.error}>{error ?? '지출 리포트를 불러오지 못했습니다'}</Text>
         ) : (
           <>
+            <CoachingBanner coaching={data.coaching} />
             <SummaryCard data={data} onOpenBudget={() => setBudgetModalVisible(true)} />
             <TrendCard data={data} />
             <Text style={styles.sectionTitle}>카테고리별 지출</Text>
@@ -133,6 +134,68 @@ function SummaryCard({ data, onOpenBudget }: { data: ExpenseReportResponse; onOp
         )}
       </Pressable>
     </Card>
+  );
+}
+
+// 지출 코칭 배너. 완성 문장 대신 판정 결과·숫자만 내려받아 여기서 조립하고,
+// 금액 부분만 Text를 분리해 tier 색으로 강조한다.
+// 기준은 저번 달 지출을 "평소"(그 이전 몇 달 평균)와 비교한 증감률 — 지출/수입 비율이 아니다.
+const COACHING_TIER_META: Record<Coaching['tier'], { bg: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  SURPLUS: { bg: colors.primaryLight, color: colors.primary, icon: 'sparkles-outline' },
+  CAUTION: { bg: colors.warningLight, color: colors.warning, icon: 'alert-circle-outline' },
+  DEFICIT: { bg: colors.dangerLight, color: colors.danger, icon: 'trending-down-outline' },
+};
+
+function CoachingBanner({ coaching }: { coaching: Coaching | null }) {
+  if (!coaching) return null;
+  const meta = COACHING_TIER_META[coaching.tier];
+  const Amount = ({ amount }: { amount: number }) => (
+    <Text style={[styles.coachingAmount, { color: meta.color }]}>{formatWon(amount)}</Text>
+  );
+
+  let message: React.ReactNode;
+  if (coaching.tier === 'SURPLUS' && coaching.savedAmount != null) {
+    message = (
+      <Text style={styles.coachingText}>
+        저번 달은 평소보다 <Amount amount={coaching.savedAmount} /> 적게 썼어요. 저축해볼까요?
+      </Text>
+    );
+  } else if (coaching.tier === 'CAUTION' && coaching.surgeCategories[0]) {
+    const surge = coaching.surgeCategories[0];
+    message = (
+      <Text style={styles.coachingText}>
+        저번 달 {CATEGORY_LABELS[surge.category]}가 평소보다 <Amount amount={surge.increaseAmount} /> 늘었어요.
+        {coaching.reductionTargetAmount != null ? (
+          <>
+            {' '}
+            <Amount amount={coaching.reductionTargetAmount} />만 줄이면 여유가 생겨요.
+          </>
+        ) : null}
+      </Text>
+    );
+  } else if (coaching.tier === 'DEFICIT' && coaching.excessAmount != null) {
+    const categoryLabel = coaching.surgeCategories.map((s) => CATEGORY_LABELS[s.category]).join('와 ');
+    message = (
+      <Text style={styles.coachingText}>
+        저번 달 지출이 평소보다 <Amount amount={coaching.excessAmount} /> 많았어요.
+        {categoryLabel && coaching.reductionTargetAmount != null ? (
+          <>
+            {'\n'}
+            {categoryLabel}에서 <Amount amount={coaching.reductionTargetAmount} />
+            만큼 줄여보세요.
+          </>
+        ) : null}
+      </Text>
+    );
+  } else {
+    return null;
+  }
+
+  return (
+    <View style={[styles.coachingBanner, { backgroundColor: meta.bg }]}>
+      <Ionicons name={meta.icon} size={18} color={meta.color} />
+      <View style={styles.coachingTextWrap}>{message}</View>
+    </View>
   );
 }
 
@@ -343,6 +406,17 @@ const styles = StyleSheet.create({
 
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.sm },
   monthTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+
+  coachingBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  coachingTextWrap: { flex: 1 },
+  coachingText: { fontSize: 13, color: colors.textPrimary, lineHeight: 19 },
+  coachingAmount: { fontSize: 13, fontWeight: '800' },
 
   summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
   summaryLabel: { fontSize: 13, color: colors.textSecondary },
