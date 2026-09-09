@@ -8,6 +8,7 @@ import SectionHeader from '../../components/SectionHeader';
 import { colors, radius, spacing } from '../../constants/colors';
 import { EMPLOYMENT_STATUS_LABELS, HOUSING_TYPE_LABELS, SURVEY_TAG_LABELS } from '../../constants/benefitLabels';
 import { benefitApi, mySubsidyApi } from '../../services/benefit';
+import { formatApplyDeadline } from '../../utils/deadline';
 import { useAuth } from '../../contexts/AuthContext';
 import type { CategoryMatchResponse, MatchCondition, SubsidyMatchResponse, SurveyResponse } from '../../types/benefit';
 
@@ -217,7 +218,8 @@ function InfoCard({ survey, onRetake }: { survey: SurveyResponse; onRetake: () =
 }
 
 function SubsidyCard({ item, onPress }: { item: SubsidyMatchResponse; onPress: () => void }) {
-  const metaLine = [item.orgName, item.applyDeadlineRaw].filter(Boolean).join(' · ');
+  const deadline = formatApplyDeadline(item.applyDeadlineDate ?? item.applyDeadlineRaw);
+  const metaLine = [item.orgName, deadline].filter(Boolean).join(' · ');
 
   return (
     <Pressable onPress={onPress}>
