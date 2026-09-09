@@ -28,7 +28,7 @@ export default function MyPageScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="자립동행: D-1825" showBack showProfile={false} />
+      <ScreenHeader title="자립동행" showBack showProfile={false} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Pressable>
           <Card style={styles.profileCard}>

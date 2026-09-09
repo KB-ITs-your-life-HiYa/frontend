@@ -18,7 +18,7 @@ interface Props {
 
 // 모든 화면 상단에 공통으로 쓰는 앱 타이틀 바
 export default function ScreenHeader({
-  title = '자립동행:D-1825',
+  title = '자립동행',
   showBack = false,
   showProfile = true,
   showNotification = false,
