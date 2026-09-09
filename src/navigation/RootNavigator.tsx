@@ -78,7 +78,7 @@ const TAB_LABELS: Record<keyof RootTabParamList, string> = {
   Home: '홈',
   Chat: '대화',
   Benefits: '지원금',
-  Housing: '독립지원',
+  Housing: '주거',
   Play: '놀이',
 };
 
