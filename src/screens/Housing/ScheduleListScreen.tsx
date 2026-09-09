@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import { colors, spacing } from '../../constants/colors';
@@ -14,11 +14,13 @@ import { TODAY } from '../../utils/today';
 // 독립 지원 — "주거지원 일정" 전체보기. 이번 달·다음 달 공고의 시작/마감 일정
 export default function ScheduleListScreen() {
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const [notices, setNotices] = useState<HousingNoticeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isFocused) return;
     let cancelled = false;
     async function load() {
       setLoading(true);
@@ -52,7 +54,7 @@ export default function ScheduleListScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isFocused]);
 
   const events = useMemo(
     () => upcomingScheduleEvents(buildScheduleEvents(notices)),

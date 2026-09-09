@@ -3,6 +3,46 @@
 /** 공고 대상 유형. 백엔드 TargetType 과 같은 값 */
 export type HousingTargetType = 'SELF_RELIANCE' | 'YOUTH' | 'GENERAL';
 
+/** 백엔드가 저장된 회원 정보로 계산한 자격 상태 */
+export type HousingEligibilityStatus = 'MATCH' | 'NEEDS_CHECK' | 'NO_MATCH';
+
+/** 백엔드가 공고 판정에 적용한 규칙 */
+export type HousingEligibilityRuleType =
+  | 'SELF_RELIANCE_DEMO'
+  | 'LH_YOUTH_PURCHASE'
+  | 'UNSUPPORTED';
+
+/** LH 청년 매입임대 1순위에 해당하는 근거 */
+export type YouthPurchasePriorityBasis =
+  | 'BENEFIT_RECIPIENT'
+  | 'SUPPORTED_SINGLE_PARENT'
+  | 'NEAR_POVERTY'
+  | 'NONE';
+
+export interface HousingEligibility {
+  status: HousingEligibilityStatus;
+  reasons: string[];
+  missingFields: string[];
+  evaluatedOn: string; // YYYY-MM-DD
+  /** 날짜를 옮긴 시연 공고의 규칙을 적용했으면 true */
+  demo: boolean;
+  ruleType: HousingEligibilityRuleType;
+  /** 확인된 신청 순위. 아직 판정할 수 없으면 null */
+  priority: number | null;
+}
+
+export interface HousingEligibilityProfile {
+  isHomeless: boolean;
+  isMarried: boolean;
+  youthPurchasePriorityBasis: YouthPurchasePriorityBasis | null;
+  updatedAt: string;
+}
+
+export type HousingEligibilityProfileRequest = Pick<
+  HousingEligibilityProfile,
+  'isHomeless' | 'isMarried' | 'youthPurchasePriorityBasis'
+>;
+
 /** 캘린더·상시 모집 목록에 쓰는 공고 요약 */
 export interface HousingNoticeSummary {
   id: number;
@@ -12,6 +52,7 @@ export interface HousingNoticeSummary {
   targetType: HousingTargetType;
   beginDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
+  eligibility: HousingEligibility;
 }
 
 /** GET /housing/calendar 응답 */
@@ -55,6 +96,7 @@ export interface HousingNoticeDetail {
   myhomeUrl: string | null;
   superseded: boolean;
   units: HousingNoticeUnit[];
+  eligibility: HousingEligibility;
 }
 
 /** 체크리스트 종류. 백엔드 ChecklistTemplateType 과 같은 값 */

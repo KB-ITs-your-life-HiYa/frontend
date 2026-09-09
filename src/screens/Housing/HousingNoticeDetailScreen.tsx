@@ -9,8 +9,16 @@ import Button from '../../components/Button';
 import { colors, spacing } from '../../constants/colors';
 import { ApiError } from '../../services/api';
 import { housingApi } from '../../services/housing';
-import { HousingNoticeDetail, HousingNoticeUnit, HousingTargetType } from '../../types/housing';
+import {
+  HousingEligibilityProfile,
+  HousingEligibilityProfileRequest,
+  HousingEligibilityStatus,
+  HousingNoticeDetail,
+  HousingNoticeUnit,
+  HousingTargetType,
+} from '../../types/housing';
 import { formatWon } from '../../utils/money';
+import HousingEligibilityProfileModal from './HousingEligibilityProfileModal';
 
 type DetailRoute = RouteProp<{ HousingNoticeDetail: { noticeId: number } }, 'HousingNoticeDetail'>;
 
@@ -20,9 +28,29 @@ const TARGET_LABEL: Record<HousingTargetType, string> = {
   GENERAL: '일반',
 };
 
+const ELIGIBILITY_BADGE: Record<
+  HousingEligibilityStatus,
+  { label: string; tone: 'success' | 'accent' | 'danger'; icon: 'checkmark-circle' | 'alert-circle' | 'close-circle' }
+> = {
+  MATCH: { label: '자격 충족', tone: 'success', icon: 'checkmark-circle' },
+  NEEDS_CHECK: { label: '확인 필요', tone: 'accent', icon: 'alert-circle' },
+  NO_MATCH: { label: '미충족', tone: 'danger', icon: 'close-circle' },
+};
+
 function formatIsoMonthDay(iso: string) {
   const [, m, d] = iso.split('-');
   return `${Number(m)}.${Number(d)}`;
+}
+
+function eligibilityBadgeLabel(detail: HousingNoticeDetail) {
+  const badge = ELIGIBILITY_BADGE[detail.eligibility.status].label;
+  return detail.eligibility.priority == null
+    ? badge
+    : `${badge} · ${detail.eligibility.priority}순위`;
+}
+
+function eligibilityReasonLabel(reason: string) {
+  return reason.replace('데모 공고의 신청 조건', '신청 조건');
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -58,8 +86,12 @@ export default function HousingNoticeDetailScreen() {
   const { noticeId } = route.params;
 
   const [detail, setDetail] = useState<HousingNoticeDetail | null>(null);
+  const [profile, setProfile] = useState<HousingEligibilityProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,11 +99,18 @@ export default function HousingNoticeDetailScreen() {
       setLoading(true);
       setError(null);
       try {
-        const res = await housingApi.getNoticeDetail(noticeId);
-        if (!cancelled) setDetail(res);
+        const [detailRes, profileRes] = await Promise.all([
+          housingApi.getNoticeDetail(noticeId),
+          housingApi.getEligibilityProfile(),
+        ]);
+        if (!cancelled) {
+          setDetail(detailRes);
+          setProfile(profileRes);
+        }
       } catch (e) {
         if (!cancelled) {
           setDetail(null);
+          setProfile(null);
           setError(
             e instanceof ApiError ? e.message : '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요'
           );
@@ -85,6 +124,22 @@ export default function HousingNoticeDetailScreen() {
       cancelled = true;
     };
   }, [noticeId]);
+
+  async function saveProfile(request: HousingEligibilityProfileRequest) {
+    setProfileSaving(true);
+    setProfileError(null);
+    try {
+      const saved = await housingApi.saveEligibilityProfile(request);
+      const refreshed = await housingApi.getNoticeDetail(noticeId);
+      setProfile(saved);
+      setDetail(refreshed);
+      setProfileModalVisible(false);
+    } catch (e) {
+      setProfileError(e instanceof ApiError ? e.message : '자격 정보를 저장하지 못했습니다');
+    } finally {
+      setProfileSaving(false);
+    }
+  }
 
   async function openUrl(url: string) {
     try {
@@ -130,6 +185,40 @@ export default function HousingNoticeDetailScreen() {
               )}
             </Card>
 
+            <Card style={styles.eligibilityCard}>
+              <View style={styles.eligibilityHeader}>
+                <View style={styles.eligibilityHeading}>
+                  <Text style={styles.sectionTitle}>내 신청 자격</Text>
+                  <Text style={styles.eligibilityDate}>{formatIsoMonthDay(detail.eligibility.evaluatedOn)} 기준</Text>
+                </View>
+                <Badge
+                  label={eligibilityBadgeLabel(detail)}
+                  tone={ELIGIBILITY_BADGE[detail.eligibility.status].tone}
+                  icon={ELIGIBILITY_BADGE[detail.eligibility.status].icon}
+                />
+              </View>
+              <View style={styles.reasonList}>
+                {detail.eligibility.reasons.map((reason) => (
+                  <View key={reason} style={styles.reasonRow}>
+                    <Text style={styles.reasonBullet}>•</Text>
+                    <Text style={styles.reasonText}>{eligibilityReasonLabel(reason)}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.eligibilityNote}>
+                입력한 정보에 따른 참고 결과이며, 최종 자격은 공고 기관에서 심사합니다.
+              </Text>
+              <Button
+                label={profile ? '내 자격 정보 수정' : '자격 정보 입력'}
+                variant="secondary"
+                size="sm"
+                onPress={() => {
+                  setProfileError(null);
+                  setProfileModalVisible(true);
+                }}
+              />
+            </Card>
+
             <Card style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>공고 정보</Text>
               <InfoRow label="접수기간" value={period} />
@@ -169,6 +258,14 @@ export default function HousingNoticeDetailScreen() {
           </>
         )}
       </ScrollView>
+      <HousingEligibilityProfileModal
+        visible={profileModalVisible}
+        profile={profile}
+        saving={profileSaving}
+        error={profileError}
+        onClose={() => setProfileModalVisible(false)}
+        onSave={saveProfile}
+      />
     </View>
   );
 }
@@ -186,6 +283,15 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: colors.textSecondary },
   sectionCard: { gap: 2 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
+  eligibilityCard: { gap: spacing.md },
+  eligibilityHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  eligibilityHeading: { flex: 1, gap: 2 },
+  eligibilityDate: { fontSize: 11, color: colors.textTertiary },
+  reasonList: { gap: 6 },
+  reasonRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  reasonBullet: { fontSize: 13, lineHeight: 19, color: colors.textSecondary },
+  reasonText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.textSecondary },
+  eligibilityNote: { fontSize: 11, lineHeight: 17, color: colors.textTertiary },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

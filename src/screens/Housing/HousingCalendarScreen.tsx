@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
@@ -123,6 +123,7 @@ type HelpState = { title: string; body: string };
 
 export default function HousingCalendarScreen() {
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const [viewDate, setViewDate] = useState(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(TODAY);
   const weeks = useMemo(() => buildMonthMatrix(viewDate.getFullYear(), viewDate.getMonth()), [viewDate]);
@@ -145,6 +146,7 @@ export default function HousingCalendarScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isFocused) return;
     let cancelled = false;
     async function load() {
       setLoading(true);
@@ -175,7 +177,7 @@ export default function HousingCalendarScreen() {
     return () => {
       cancelled = true;
     };
-  }, [viewDate]);
+  }, [viewDate, isFocused]);
 
   // 달을 넘기면 선택일이 그 달 밖이 되지 않게 맞춘다
   useEffect(() => {

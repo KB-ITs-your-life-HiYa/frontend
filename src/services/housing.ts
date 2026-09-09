@@ -6,6 +6,8 @@ import {
   HousingCalendarResponse,
   HousingChecklist,
   HousingChecklistItem,
+  HousingEligibilityProfile,
+  HousingEligibilityProfileRequest,
   HousingNoticeDetail,
   UpdateHousingChecklistItemRequest,
 } from '../types/housing';
@@ -18,6 +20,7 @@ export type HousingCalendarParams = {
 };
 
 const CHECKLISTS = '/members/me/housing/checklists';
+const ELIGIBILITY_PROFILE = '/members/me/housing-eligibility';
 
 export const housingApi = {
   getCalendar: ({ year, month, regionCode }: HousingCalendarParams) => {
@@ -32,6 +35,11 @@ export const housingApi = {
   },
 
   getNoticeDetail: (id: number) => api.get<HousingNoticeDetail>(`/housing/notices/${id}`),
+
+  getEligibilityProfile: () => api.get<HousingEligibilityProfile | null>(ELIGIBILITY_PROFILE),
+
+  saveEligibilityProfile: (body: HousingEligibilityProfileRequest) =>
+    api.put<HousingEligibilityProfile>(ELIGIBILITY_PROFILE, body),
 
   listChecklists: () => api.get<HousingChecklist[]>(CHECKLISTS),
 
