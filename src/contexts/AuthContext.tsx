@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { clearToken, loadToken, saveToken } from '../services/auth';
+import { clearToken, loadToken, saveToken, subscribeTokenCleared } from '../services/auth';
 import type { LoginResponse, Member } from '../types';
 
 interface AuthValue {
@@ -17,6 +17,9 @@ const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [member, setMember] = useState<Member | null>(null);
+
+    // API가 만료된 토큰을 지우면 화면의 로그인 상태도 즉시 해제한다.
+    useEffect(() => subscribeTokenCleared(() => setMember(null)), []);
 
     // 앱이 켜질 때 한 번. 저장된 토큰이 아직 쓸 수 있는지 서버에 물어본다.
     useEffect(() => {
