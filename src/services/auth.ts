@@ -2,6 +2,14 @@ import {Platform} from "react-native";
 import * as SecureStore from 'expo-secure-store';
 
 const TOKEN_KEY = 'fledge.token';
+const tokenClearedListeners = new Set<() => void>();
+
+export function subscribeTokenCleared(listener: () => void): () => void {
+    tokenClearedListeners.add(listener);
+    return () => {
+        tokenClearedListeners.delete(listener);
+    };
+}
 
 // SecureStore 는 웹을 지원하지 않는다. 웹(개발 확인용)에서만 localStorage 로 떨어진다.
 const isWeb = Platform.OS === 'web';
@@ -22,9 +30,13 @@ export async function loadToken(): Promise<string | null> {
 }
 
 export async function clearToken(): Promise<void> {
-    if (isWeb) {
-        localStorage.removeItem(TOKEN_KEY);
-        return;
+    try {
+        if (isWeb) {
+            localStorage.removeItem(TOKEN_KEY);
+        } else {
+            await SecureStore.deleteItemAsync(TOKEN_KEY);
+        }
+    } finally {
+        tokenClearedListeners.forEach(listener => listener());
     }
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
