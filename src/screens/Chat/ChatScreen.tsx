@@ -30,6 +30,17 @@ function formatMessageTime(date: string) {
   });
 }
 
+function demoTimestamp(referenceDate?: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const hour = parts.find(part => part.type === 'hour')?.value ?? '00';
+  const minute = parts.find(part => part.type === 'minute')?.value ?? '00';
+  const date = referenceDate?.slice(0, 10)
+    ?? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+  return `${date}T${hour}:${minute}:00+09:00`;
+}
+
 function chatDayLabel(date: string | undefined, referenceDate: string | undefined) {
   const target = date?.slice(0, 10);
   const reference = referenceDate?.slice(0, 10) ?? target;
@@ -192,6 +203,12 @@ export default function ChatScreen() {
     if (!signal && manualTab === 'care') setManualTab(null);
   }, [manualTab, signal]);
 
+  useEffect(() => {
+    if (summary?.asOf && faqThread.length === 0 && budgetThread.length === 0) {
+      setChatSessionStartedAt(demoTimestamp(summary.asOf));
+    }
+  }, [budgetThread.length, faqThread.length, summary?.asOf]);
+
   const offerSignal = signal?.referralEligible && (signal.recheckedAt || signal.responseResult === 'NEEDS_CARE')
     ? signal : [...signals].reverse().find(s => s.referralEligible && s.recheckedAt);
 
@@ -307,7 +324,7 @@ export default function ChatScreen() {
   // 지원금/독립지원/서비스 자유질문. summary 를 안 건드리는 별개 상태라 useCare 의 run() 을 쓰지 않는다.
   async function sendFaqMessage(question: string, retryIndex?: number) {
     const index = retryIndex ?? faqThread.length;
-    const createdAt = faqThread[index]?.createdAt ?? new Date().toISOString();
+    const createdAt = faqThread[index]?.createdAt ?? demoTimestamp(summary?.asOf);
     setFaqThread(prev => {
       const next = [...prev];
       next[index] = { question, createdAt };
@@ -319,7 +336,7 @@ export default function ChatScreen() {
       setFaqThread(prev => {
         const next = [...prev];
         next[index] = { ...next[index], question, createdAt, answer: response.answer,
-          answeredAt: new Date().toISOString(), sources: response.grounded ? response.sources : [] };
+          answeredAt: demoTimestamp(summary?.asOf), sources: response.grounded ? response.sources : [] };
         return next;
       });
     } catch {
@@ -335,7 +352,7 @@ export default function ChatScreen() {
   // 생활비 자유질문. 이 사용자의 실제 이번 달 지출/예산/고정비/저축 데이터를 근거로 답한다.
   async function sendBudgetMessage(question: string, retryIndex?: number) {
     const index = retryIndex ?? budgetThread.length;
-    const createdAt = budgetThread[index]?.createdAt ?? new Date().toISOString();
+    const createdAt = budgetThread[index]?.createdAt ?? demoTimestamp(summary?.asOf);
     setBudgetThread(prev => {
       const next = [...prev];
       next[index] = { question, createdAt };
@@ -347,7 +364,7 @@ export default function ChatScreen() {
       setBudgetThread(prev => {
         const next = [...prev];
         next[index] = { ...next[index], question, createdAt, answer: response.answer,
-          answeredAt: new Date().toISOString() };
+          answeredAt: demoTimestamp(summary?.asOf) };
         return next;
       });
     } catch {
@@ -498,7 +515,7 @@ export default function ChatScreen() {
             onPress={() => { void send(option.value); }} />)}
         </View>}
       </> : activeTab === 'budget' ? <>
-        <DaySeparator date={chatSessionStartedAt} referenceDate={chatSessionStartedAt} />
+        <DaySeparator date={chatSessionStartedAt} referenceDate={summary?.asOf ?? chatSessionStartedAt} />
         <Message time={chatSessionStartedAt} text={budgetSummary?.greeting
           ?? '이번 달 생활비 흐름을 같이 살펴볼게요. 궁금한 항목을 물어보시면, 아래 요약과 연결해서 설명해 드릴게요.'} />
         {budgetSummaryLoading && <ActivityIndicator color={colors.chatAccent} accessibilityLabel="생활비 요약 불러오는 중" />}
@@ -524,7 +541,7 @@ export default function ChatScreen() {
           </View> : entry.answer === undefined ? <TypingIndicator /> : <Message text={entry.answer} time={entry.answeredAt} />}
         </React.Fragment>)}
       </> : <>
-        <DaySeparator date={chatSessionStartedAt} referenceDate={chatSessionStartedAt} />
+        <DaySeparator date={chatSessionStartedAt} referenceDate={summary?.asOf ?? chatSessionStartedAt} />
         {faqThread.length === 0 && <Message time={chatSessionStartedAt} text="지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요." />}
         {faqThread.map((entry, index) => <React.Fragment key={index}>
           <Message text={entry.question} time={entry.createdAt} user />
