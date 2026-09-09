@@ -8,16 +8,12 @@ import Badge from '../../components/Badge';
 import Button from '../../components/Button';
 import { colors, radius, spacing } from '../../constants/colors';
 import { formatWon } from '../../utils/money';
+import { formatApplyDeadline } from '../../utils/deadline';
 import { housingApi } from '../../services/housing';
 import type { MatchCondition, SubsidyMatchResponse } from '../../types/benefit';
 import type { RelatedNoticeSummary } from '../../types/housing';
 
 type DetailRoute = RouteProp<{ BenefitDetail: { item: SubsidyMatchResponse } }, 'BenefitDetail'>;
-
-function formatIsoDate(iso: string) {
-  const [y, m, d] = iso.split('-');
-  return `${y}.${Number(m)}.${Number(d)}`;
-}
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (value == null || value === '') return null;
@@ -47,7 +43,7 @@ export default function BenefitDetailScreen() {
   const navigation = useNavigation<any>();
   const { item } = route.params;
 
-  const deadline = item.applyDeadlineDate ? formatIsoDate(item.applyDeadlineDate) : item.applyDeadlineRaw;
+  const deadline = formatApplyDeadline(item.applyDeadlineDate ?? item.applyDeadlineRaw);
 
   const [relatedNotices, setRelatedNotices] = useState<RelatedNoticeSummary[]>([]);
 
