@@ -24,8 +24,10 @@ import CareDemoControls from './CareDemoControls';
 const MINIMUM_AI_LOADING_MS = 1200;
 const REFERRAL_REVEAL_DELAY_MS = 2000;
 
-function formatCurrentTime() {
-  return new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
+function formatMessageTime(date: string) {
+  return new Date(date).toLocaleTimeString('ko-KR', {
+    hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul',
+  });
 }
 
 function chatDayLabel(date: string | undefined, referenceDate: string | undefined) {
@@ -66,7 +68,7 @@ function Message({ text, time, user = false }: { text: string; time?: string; us
           {formatConversationText(text)}
         </Text>
       </View>
-      {time && <Text style={[styles.timestamp, user && styles.timestampRight]}>{formatCurrentTime()}</Text>}
+      {time && <Text style={[styles.timestamp, user && styles.timestampRight]}>{formatMessageTime(time)}</Text>}
     </View>
   </View>;
 }
@@ -119,8 +121,8 @@ function BudgetSummaryCard({ summary }: { summary: BudgetChatSummaryResponse }) 
   </View>;
 }
 
-interface FaqEntry { question: string; answer?: string; sources?: FaqSource[]; error?: boolean; }
-interface BudgetChatEntry { question: string; answer?: string; error?: boolean; }
+interface FaqEntry { question: string; createdAt: string; answer?: string; answeredAt?: string; sources?: FaqSource[]; error?: boolean; }
+interface BudgetChatEntry { question: string; createdAt: string; answer?: string; answeredAt?: string; error?: boolean; }
 type ChatTab = 'basic' | 'budget' | 'care';
 
 export default function ChatScreen() {
@@ -141,6 +143,7 @@ export default function ChatScreen() {
   const [budgetSummaryError, setBudgetSummaryError] = useState(false);
   const [budgetThread, setBudgetThread] = useState<BudgetChatEntry[]>([]);
   const [budgetBusy, setBudgetBusy] = useState(false);
+  const [chatSessionStartedAt, setChatSessionStartedAt] = useState(() => new Date().toISOString());
   // 사용자가 직접 고른 탭. null 이면 신호 유무로 자동 결정한다 (신호가 있으면 스마트 케어, 없으면 기본 채팅).
   const [manualTab, setManualTab] = useState<ChatTab | null>(null);
   const [referralLoadingId, setReferralLoadingId] = useState<number | null>(null);
@@ -163,6 +166,7 @@ export default function ChatScreen() {
     setBudgetSummaryError(false);
     setBudgetThread([]);
     setBudgetBusy(false);
+    setChatSessionStartedAt(new Date().toISOString());
     setManualTab(null);
     return () => {
       if (localTypingTimer.current) clearTimeout(localTypingTimer.current);
@@ -303,9 +307,10 @@ export default function ChatScreen() {
   // 지원금/독립지원/서비스 자유질문. summary 를 안 건드리는 별개 상태라 useCare 의 run() 을 쓰지 않는다.
   async function sendFaqMessage(question: string, retryIndex?: number) {
     const index = retryIndex ?? faqThread.length;
+    const createdAt = faqThread[index]?.createdAt ?? new Date().toISOString();
     setFaqThread(prev => {
       const next = [...prev];
-      next[index] = { question };
+      next[index] = { question, createdAt };
       return next;
     });
     setFaqBusy(true);
@@ -313,13 +318,14 @@ export default function ChatScreen() {
       const response: FaqAskResponse = await careApi.faq({ question });
       setFaqThread(prev => {
         const next = [...prev];
-        next[index] = { question, answer: response.answer, sources: response.grounded ? response.sources : [] };
+        next[index] = { ...next[index], question, createdAt, answer: response.answer,
+          answeredAt: new Date().toISOString(), sources: response.grounded ? response.sources : [] };
         return next;
       });
     } catch {
       setFaqThread(prev => {
         const next = [...prev];
-        next[index] = { question, error: true };
+        next[index] = { ...next[index], question, createdAt, error: true };
         return next;
       });
     }
@@ -329,9 +335,10 @@ export default function ChatScreen() {
   // 생활비 자유질문. 이 사용자의 실제 이번 달 지출/예산/고정비/저축 데이터를 근거로 답한다.
   async function sendBudgetMessage(question: string, retryIndex?: number) {
     const index = retryIndex ?? budgetThread.length;
+    const createdAt = budgetThread[index]?.createdAt ?? new Date().toISOString();
     setBudgetThread(prev => {
       const next = [...prev];
-      next[index] = { question };
+      next[index] = { question, createdAt };
       return next;
     });
     setBudgetBusy(true);
@@ -339,13 +346,14 @@ export default function ChatScreen() {
       const response = await api.post<BudgetChatAskResponse>('/members/me/budget/chat/ask', { question });
       setBudgetThread(prev => {
         const next = [...prev];
-        next[index] = { question, answer: response.answer };
+        next[index] = { ...next[index], question, createdAt, answer: response.answer,
+          answeredAt: new Date().toISOString() };
         return next;
       });
     } catch {
       setBudgetThread(prev => {
         const next = [...prev];
-        next[index] = { question, error: true };
+        next[index] = { ...next[index], question, createdAt, error: true };
         return next;
       });
     }
@@ -490,7 +498,8 @@ export default function ChatScreen() {
             onPress={() => { void send(option.value); }} />)}
         </View>}
       </> : activeTab === 'budget' ? <>
-        <Message text={budgetSummary?.greeting
+        <DaySeparator date={chatSessionStartedAt} referenceDate={chatSessionStartedAt} />
+        <Message time={chatSessionStartedAt} text={budgetSummary?.greeting
           ?? '이번 달 생활비 흐름을 같이 살펴볼게요. 궁금한 항목을 물어보시면, 아래 요약과 연결해서 설명해 드릴게요.'} />
         {budgetSummaryLoading && <ActivityIndicator color={colors.chatAccent} accessibilityLabel="생활비 요약 불러오는 중" />}
         {budgetSummaryError && <View style={styles.errorWrap} accessibilityRole="alert">
@@ -505,19 +514,20 @@ export default function ChatScreen() {
             label={question} onPress={() => { void sendBudgetMessage(question); }} />)}
         </View>}
         {budgetThread.map((entry, index) => <React.Fragment key={index}>
-          <Message text={entry.question} user />
+          <Message text={entry.question} time={entry.createdAt} user />
           {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
             <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
             <Pressable accessibilityRole="button" disabled={budgetBusy}
               onPress={() => { void sendBudgetMessage(entry.question, index); }}>
               <Text style={styles.quickReplyText}>다시 시도하기</Text>
             </Pressable>
-          </View> : entry.answer === undefined ? <TypingIndicator /> : <Message text={entry.answer} />}
+          </View> : entry.answer === undefined ? <TypingIndicator /> : <Message text={entry.answer} time={entry.answeredAt} />}
         </React.Fragment>)}
       </> : <>
-        {faqThread.length === 0 && <Message text="지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요." />}
+        <DaySeparator date={chatSessionStartedAt} referenceDate={chatSessionStartedAt} />
+        {faqThread.length === 0 && <Message time={chatSessionStartedAt} text="지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요." />}
         {faqThread.map((entry, index) => <React.Fragment key={index}>
-          <Message text={entry.question} user />
+          <Message text={entry.question} time={entry.createdAt} user />
           {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
             <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
             <Pressable accessibilityRole="button" disabled={faqBusy}
@@ -525,7 +535,7 @@ export default function ChatScreen() {
               <Text style={styles.quickReplyText}>다시 시도하기</Text>
             </Pressable>
           </View> : entry.answer === undefined ? <TypingIndicator /> : <>
-            <Message text={entry.answer} />
+            <Message text={entry.answer} time={entry.answeredAt} />
             {entry.sources && <FaqSources sources={entry.sources} />}
           </>}
         </React.Fragment>)}
