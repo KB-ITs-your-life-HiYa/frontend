@@ -79,7 +79,7 @@ const TAB_LABELS: Record<keyof RootTabParamList, string> = {
   Chat: '대화',
   Benefits: '지원금',
   Housing: '주거',
-  Play: '놀이',
+  Play: '교육',
 };
 
 // 탭 바 밑에 흰 배경이 두 겹으로 보인다는 피드백 — react-navigation이 기기 하단 세이프 에어리어
@@ -122,10 +122,10 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: TAB_LABELS.Home }} />
-      <Tab.Screen name="Chat" component={ChatScreen} options={{ title: TAB_LABELS.Chat }} />
       <Tab.Screen name="Benefits" component={BenefitsScreen} options={{ title: TAB_LABELS.Benefits }} />
       <Tab.Screen name="Housing" component={HousingCalendarScreen} options={{ title: TAB_LABELS.Housing }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: TAB_LABELS.Home }} />
+      <Tab.Screen name="Chat" component={ChatScreen} options={{ title: TAB_LABELS.Chat }} />
       <Tab.Screen name="Play" component={PlayScreen} options={{ title: TAB_LABELS.Play }} />
     </Tab.Navigator>
   );
