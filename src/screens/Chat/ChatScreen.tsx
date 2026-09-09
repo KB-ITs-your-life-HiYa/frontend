@@ -176,11 +176,17 @@ export default function ChatScreen() {
   const scroll = useRef<ScrollView>(null);
   const signals = summary?.signals ?? [];
   const signal = [...signals].reverse().find(item => item.status === 'OPEN');
-  const activeTab: ChatTab = manualTab ?? (signal ? 'care' : 'basic');
   const openSignalCount = signals.filter(item => item.status === 'OPEN').length;
+  const activeTab: ChatTab = manualTab === 'care' && !signal
+    ? 'basic'
+    : manualTab ?? (signal ? 'care' : 'basic');
   const options = signal && !busy && signal.replies.length === 0 && editingSignal !== signal.id ? signal.options : [];
   const editing = signal && editingSignal === signal.id && signal.status === 'OPEN';
   const interactionBusy = busy || localTyping || awaitingAi || pendingUserText !== null;
+
+  useEffect(() => {
+    if (!signal && manualTab === 'care') setManualTab(null);
+  }, [manualTab, signal]);
 
   const offerSignal = signal?.referralEligible && (signal.recheckedAt || signal.responseResult === 'NEEDS_CARE')
     ? signal : [...signals].reverse().find(s => s.referralEligible && s.recheckedAt);
@@ -410,19 +416,17 @@ export default function ChatScreen() {
         style={[styles.tabPill, activeTab === 'budget' && styles.tabPillActive]} onPress={() => setManualTab('budget')}>
         <Text numberOfLines={1} style={[styles.tabPillText, activeTab === 'budget' && styles.tabPillTextActive]}>생활비 관리</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityState={{ selected: activeTab === 'care' }}
+      {openSignalCount > 0 && <Pressable accessibilityRole="button" accessibilityState={{ selected: activeTab === 'care' }}
         style={[styles.tabPill, activeTab === 'care' && styles.tabPillActive]} onPress={() => setManualTab('care')}>
         <Text numberOfLines={1} style={[styles.tabPillText, activeTab === 'care' && styles.tabPillTextActive]}>스마트 케어</Text>
-        {openSignalCount > 0 && <View style={styles.tabBadge}><Text style={styles.tabBadgeText}>{openSignalCount}</Text></View>}
-      </Pressable>
+        <View style={styles.tabBadge}><Text style={styles.tabBadgeText}>{openSignalCount}</Text></View>
+      </Pressable>}
     </View>
     <ScrollView ref={scroll} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled"
       onContentSizeChange={() => {
         if (signals.length > 1 || (signal?.replies.length ?? 0) > 0) scroll.current?.scrollToEnd({ animated: true });
       }}>
       {activeTab === 'care' ? <>
-        {signals.length === 0 && <Message text={summary?.reminders[0]?.message
-          ?? '아직 확인이 필요한 이상징후가 없어요. 이상징후가 감지되면 여기로 먼저 알려드릴게요.'} />}
         {signals.map(conversation => <React.Fragment key={conversation.id}>
           <DaySeparator date={conversation.detectedAt} referenceDate={summary?.asOf} />
           <Message text={conversation.prompt} time={conversation.detectedAt} />
