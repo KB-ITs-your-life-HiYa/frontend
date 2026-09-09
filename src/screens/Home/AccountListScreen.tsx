@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import Card from '../../components/Card';
@@ -12,7 +12,16 @@ const TITLES: Record<AccountType, string> = { DEPOSIT: '계좌·현금', SAVINGS
 const SUM_LABELS: Record<AccountType, string> = { DEPOSIT: '계좌 · 현금 잔액', SAVINGS: '예적금 합계' };
 const TYPE_LABELS: Record<AccountType, string> = { DEPOSIT: '입출금', SAVINGS: '적금' };
 
-// 계좌 이니셜 원형 배경색. 은행명 첫 글자로 찾고, 목록에 없으면 기본색을 쓴다
+// 은행 로고. 은행명에 포함된 키워드로 찾고, 목록에 없으면 이니셜 원으로 대체한다
+const BANK_LOGOS: { keyword: string; source: number }[] = [
+  { keyword: 'KB', source: require('../../../assets/kb.png') },
+  { keyword: '신한', source: require('../../../assets/shinhan.png') },
+  { keyword: '우리', source: require('../../../assets/woori.png') },
+];
+function findBankLogo(bankName: string) {
+  return BANK_LOGOS.find((logo) => bankName.includes(logo.keyword))?.source ?? null;
+}
+
 const BANK_ICON_COLORS: Record<string, string> = {
   K: colors.primary,
   신: colors.success,
@@ -85,14 +94,21 @@ export default function AccountListScreen() {
 }
 
 function AccountRow({ account }: { account: AccountItem }) {
+  const logo = findBankLogo(account.bankName);
   const initial = account.bankName.charAt(0);
   const iconColor = BANK_ICON_COLORS[initial] ?? DEFAULT_BANK_ICON_COLOR;
 
   return (
     <View style={styles.row}>
-      <View style={[styles.iconCircle, { backgroundColor: iconColor }]}>
-        <Text style={styles.iconInitial}>{initial}</Text>
-      </View>
+      {logo ? (
+        <View style={styles.iconCircleLogo}>
+          <Image source={logo} style={styles.iconLogo} resizeMode="contain" />
+        </View>
+      ) : (
+        <View style={[styles.iconCircle, { backgroundColor: iconColor }]}>
+          <Text style={styles.iconInitial}>{initial}</Text>
+        </View>
+      )}
       <View style={styles.rowTextCol}>
         <Text style={styles.rowBankName}>{account.bankName}</Text>
         <Text style={styles.rowType}>{TYPE_LABELS[account.accountType]}</Text>
@@ -114,8 +130,19 @@ const styles = StyleSheet.create({
   empty: { fontSize: 13, color: colors.textTertiary, textAlign: 'center', paddingVertical: spacing.lg },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
-  iconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  iconInitial: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  iconInitial: { color: colors.white, fontSize: 18, fontWeight: '700' },
+  iconCircleLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  iconLogo: { width: 34, height: 34 },
   rowTextCol: { flex: 1, gap: 2 },
   rowBankName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   rowType: { fontSize: 12, color: colors.textTertiary },
