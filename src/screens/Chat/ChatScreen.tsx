@@ -57,6 +57,13 @@ function DaySeparator({ date, referenceDate }: { date?: string; referenceDate?: 
   </View>;
 }
 
+function MessageDateSeparator({ date, referenceDate, previousDate }: {
+  date?: string; referenceDate?: string; previousDate?: string;
+}) {
+  if (!date || date.slice(0, 10) === previousDate?.slice(0, 10)) return null;
+  return <DaySeparator date={date} referenceDate={referenceDate} />;
+}
+
 function supportQuestion(type: 'MISSED_SAVING' | 'MISSED_PAYMENT' | 'INCOME_MISSING') {
   return type === 'INCOME_MISSING'
     ? '조금 더 안정적으로 일할 수 있는 일자리를 추천해드릴까요?'
@@ -515,7 +522,8 @@ export default function ChatScreen() {
             onPress={() => { void send(option.value); }} />)}
         </View>}
       </> : activeTab === 'budget' ? <>
-        <DaySeparator date={chatSessionStartedAt} referenceDate={summary?.asOf ?? chatSessionStartedAt} />
+        <DaySeparator date={summary?.asOf ?? chatSessionStartedAt}
+          referenceDate={summary?.asOf ?? chatSessionStartedAt} />
         <Message time={chatSessionStartedAt} text={budgetSummary?.greeting
           ?? '이번 달 생활비 흐름을 같이 살펴볼게요. 궁금한 항목을 물어보시면, 아래 요약과 연결해서 설명해 드릴게요.'} />
         {budgetSummaryLoading && <ActivityIndicator color={colors.chatAccent} accessibilityLabel="생활비 요약 불러오는 중" />}
@@ -531,6 +539,8 @@ export default function ChatScreen() {
             label={question} onPress={() => { void sendBudgetMessage(question); }} />)}
         </View>}
         {budgetThread.map((entry, index) => <React.Fragment key={index}>
+          <MessageDateSeparator date={entry.createdAt} referenceDate={summary?.asOf}
+            previousDate={index === 0 ? summary?.asOf ?? chatSessionStartedAt : budgetThread[index - 1].createdAt} />
           <Message text={entry.question} time={entry.createdAt} user />
           {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
             <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
@@ -541,9 +551,12 @@ export default function ChatScreen() {
           </View> : entry.answer === undefined ? <TypingIndicator /> : <Message text={entry.answer} time={entry.answeredAt} />}
         </React.Fragment>)}
       </> : <>
-        <DaySeparator date={chatSessionStartedAt} referenceDate={summary?.asOf ?? chatSessionStartedAt} />
+        <DaySeparator date={summary?.asOf ?? chatSessionStartedAt}
+          referenceDate={summary?.asOf ?? chatSessionStartedAt} />
         {faqThread.length === 0 && <Message time={chatSessionStartedAt} text="지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요." />}
         {faqThread.map((entry, index) => <React.Fragment key={index}>
+          <MessageDateSeparator date={entry.createdAt} referenceDate={summary?.asOf}
+            previousDate={index === 0 ? summary?.asOf ?? chatSessionStartedAt : faqThread[index - 1].createdAt} />
           <Message text={entry.question} time={entry.createdAt} user />
           {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
             <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
