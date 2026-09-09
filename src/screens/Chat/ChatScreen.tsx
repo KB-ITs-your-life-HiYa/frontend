@@ -57,13 +57,6 @@ function DaySeparator({ date, referenceDate }: { date?: string; referenceDate?: 
   </View>;
 }
 
-function MessageDateSeparator({ date, referenceDate, previousDate }: {
-  date?: string; referenceDate?: string; previousDate?: string;
-}) {
-  if (!date || date.slice(0, 10) === previousDate?.slice(0, 10)) return null;
-  return <DaySeparator date={date} referenceDate={referenceDate} />;
-}
-
 function supportQuestion(type: 'MISSED_SAVING' | 'MISSED_PAYMENT' | 'INCOME_MISSING') {
   return type === 'INCOME_MISSING'
     ? '조금 더 안정적으로 일할 수 있는 일자리를 추천해드릴까요?'
@@ -539,8 +532,6 @@ export default function ChatScreen() {
             label={question} onPress={() => { void sendBudgetMessage(question); }} />)}
         </View>}
         {budgetThread.map((entry, index) => <React.Fragment key={index}>
-          <MessageDateSeparator date={entry.createdAt} referenceDate={summary?.asOf}
-            previousDate={index === 0 ? summary?.asOf ?? chatSessionStartedAt : budgetThread[index - 1].createdAt} />
           <Message text={entry.question} time={entry.createdAt} user />
           {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
             <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
@@ -555,8 +546,6 @@ export default function ChatScreen() {
           referenceDate={summary?.asOf ?? chatSessionStartedAt} />
         {faqThread.length === 0 && <Message time={chatSessionStartedAt} text="지원금·독립지원(주거)·서비스 이용에 대해 무엇이든 물어보세요." />}
         {faqThread.map((entry, index) => <React.Fragment key={index}>
-          <MessageDateSeparator date={entry.createdAt} referenceDate={summary?.asOf}
-            previousDate={index === 0 ? summary?.asOf ?? chatSessionStartedAt : faqThread[index - 1].createdAt} />
           <Message text={entry.question} time={entry.createdAt} user />
           {entry.error ? <View style={styles.aiStatus} accessibilityRole="alert">
             <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
