@@ -37,9 +37,9 @@ export default function ScheduleItemRow({ item, onPress }: Props) {
           <View
             style={[
               styles.eligBadge,
-              item.eligibility === 'ok'
+              item.eligibility === 'MATCH'
                 ? styles.eligOk
-                : item.eligibility === 'no'
+                : item.eligibility === 'NO_MATCH'
                   ? styles.eligNo
                   : styles.eligCheck,
             ]}
@@ -47,15 +47,15 @@ export default function ScheduleItemRow({ item, onPress }: Props) {
             <Text
               style={[
                 styles.eligBadgeText,
-                item.eligibility === 'ok'
+                item.eligibility === 'MATCH'
                   ? styles.eligOkText
-                  : item.eligibility === 'no'
+                  : item.eligibility === 'NO_MATCH'
                     ? styles.eligNoText
                     : styles.eligCheckText,
               ]}
             >
-              {item.eligibility === 'ok' ? '✓ ' : item.eligibility === 'no' ? '✕ ' : '⚠ '}
-              {eligibilityLabel(item.eligibility)}
+              {item.eligibility === 'MATCH' ? '✓ ' : item.eligibility === 'NO_MATCH' ? '✕ ' : '⚠ '}
+              {eligibilityLabel(item.eligibility, item.eligibilityPriority)}
             </Text>
           </View>
         </View>
