@@ -38,16 +38,6 @@ export default function ScreenHeader({
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </Pressable>
         ) : null}
-      </View>
-      <Text style={[styles.title, flat ? styles.titleFlat : null]} numberOfLines={1}>
-        {title}
-      </Text>
-      <View style={[styles.side, styles.sideRight]}>
-        {rightLabel ? (
-          <Pressable hitSlop={8} onPress={onRightPress}>
-            <Text style={styles.rightLabel}>{rightLabel}</Text>
-          </Pressable>
-        ) : null}
         {showNotification ? (
           <Pressable
             hitSlop={8}
@@ -56,6 +46,16 @@ export default function ScreenHeader({
           >
             <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
             <View style={styles.notificationDot} />
+          </Pressable>
+        ) : null}
+      </View>
+      <Text style={[styles.title, flat ? styles.titleFlat : null]} numberOfLines={1}>
+        {title}
+      </Text>
+      <View style={[styles.side, styles.sideRight]}>
+        {rightLabel ? (
+          <Pressable hitSlop={8} onPress={onRightPress}>
+            <Text style={styles.rightLabel}>{rightLabel}</Text>
           </Pressable>
         ) : null}
         {showProfile ? (
