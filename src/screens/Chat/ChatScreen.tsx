@@ -18,8 +18,6 @@ import TypingIndicator from './TypingIndicator';
 import { formatConversationText } from '../../utils/conversationText';
 import AiAvatar from '../../components/AiAvatar';
 import CareBanner from '../Home/CareBanner';
-// TODO(DELETE): 케어 시연용 날짜 조작. 정식 배포 전 CareDemoControls.tsx 와 함께 삭제
-import CareDemoControls from './CareDemoControls';
 
 const MINIMUM_AI_LOADING_MS = 1200;
 const REFERRAL_REVEAL_DELAY_MS = 2000;
@@ -418,27 +416,13 @@ export default function ChatScreen() {
   // 스마트 케어 탭인데 지금 답장을 받을 열린 신호가 없으면 입력창을 잠근다 — 보낼 곳이 없기 때문이다.
   const careTabIdle = activeTab === 'care' && !signal;
   const inputDisabled = interactionBusy || faqBusy || budgetBusy || careTabIdle;
+  // 스마트 케어 시연 데이터의 고정된 10:00 대신, 화면을 보는 현재 시각을 표시한다.
+  // 날짜 구분선은 기존 summary.asOf 기준을 유지해 데모 날짜 흐름은 보존한다.
+  const careDisplayTime = demoTimestamp(summary?.asOf);
 
   return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScreenHeader />
     <CareBanner summary={summary} busy={busy} error={error} />
-    {/* TODO(DELETE): 케어 시연용 날짜 조작 시작 */}
-    <CareDemoControls
-      busy={busy}
-      asOf={summary?.asOf}
-      demoEnabled={summary?.demoEnabled}
-      onRun={async (operation) => {
-        setDeclined([]);
-        setEditingSignal(null);
-        setPendingUserText(null);
-        setLocalTyping(false);
-        setAwaitingAi(false);
-        setReferralLoadingId(null);
-        setRevealedReferralIds([]);
-        return run(operation);
-      }}
-    />
-    {/* TODO(DELETE): 케어 시연용 날짜 조작 끝 */}
     <View style={styles.tabBar}>
       <Pressable accessibilityRole="button" accessibilityState={{ selected: activeTab === 'basic' }}
         style={[styles.tabPill, activeTab === 'basic' && styles.tabPillActive]} onPress={() => setManualTab('basic')}>
@@ -461,11 +445,11 @@ export default function ChatScreen() {
       {activeTab === 'care' ? <>
         {signals.map(conversation => <React.Fragment key={conversation.id}>
           <DaySeparator date={conversation.detectedAt} referenceDate={summary?.asOf} />
-          <Message text={conversation.prompt} time={conversation.detectedAt} />
+          <Message text={conversation.prompt} time={careDisplayTime} />
           {conversation.replies.map(reply => <React.Fragment key={reply.id}>
             <Message text={reply.inputType === 'BUTTON' && reply.choice === 'LATER' ? '다음에 확인할게요' : reply.userText}
-              time={reply.createdAt} user />
-            {reply.reply && <Message text={reply.reply} time={reply.createdAt} />}
+              time={careDisplayTime} user />
+            {reply.reply && <Message text={reply.reply} time={careDisplayTime} />}
             {reply.aiStatus === 'PENDING' && <TypingIndicator />}
             {reply.aiStatus === 'ERROR' && <View style={styles.aiStatus} accessibilityRole="alert">
               <Text style={styles.errorText}>답변을 불러오지 못했어요.</Text>
