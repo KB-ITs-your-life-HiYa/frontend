@@ -139,6 +139,24 @@ export interface ExpenseCategoryBreakdown {
   budget: number | null; // 그 카테고리에 예산을 설정하지 않았으면 null
 }
 
+/** 평소(직전 몇 달 평균) 대비 저번 달 지출 증감률 기반 코칭. 증감률이 -10~10%(평소와 비슷)이거나
+ * 판정 불가(평균 낼 이전 달 데이터 없음)면 백엔드가 아예 null을 내려준다 */
+export type CoachingTier = 'SURPLUS' | 'CAUTION' | 'DEFICIT';
+
+export interface CoachingSurgeCategory {
+  category: ExpenseCategory;
+  increaseAmount: number;
+}
+
+export interface Coaching {
+  tier: CoachingTier;
+  changeRate: number; // (저번 달 지출 - 평균) / 평균 * 100, 반올림 정수. 평소보다 적게 쓰면 음수
+  savedAmount: number | null; // SURPLUS 전용: 평균보다 적게 쓴 금액
+  excessAmount: number | null; // DEFICIT 전용: 평균보다 많이 쓴 금액
+  surgeCategories: CoachingSurgeCategory[]; // CAUTION 1개 / DEFICIT 최대 2개
+  reductionTargetAmount: number | null; // CAUTION/DEFICIT 전용
+}
+
 /** GET /members/me/expense-report?month=YYYY-MM 응답 */
 export interface ExpenseReportResponse {
   month: string; // YYYY-MM
@@ -150,6 +168,7 @@ export interface ExpenseReportResponse {
   categories: ExpenseCategoryBreakdown[];
   navigation: { hasPrevious: boolean; hasNext: boolean };
   monthlyBudget: number | null; // 이번 달 총예산을 설정하지 않았으면 null
+  coaching: Coaching | null;
 }
 
 /** GET/PUT /members/me/budget 응답의 카테고리 항목 */
