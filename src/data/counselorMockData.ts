@@ -1,9 +1,8 @@
 import { TODAY } from '../utils/today';
 import { CareSignalRequest, CounselorYouth } from '../types/counselor';
 
-// 상담사 포털은 아직 목업 데이터로만 채운다(실제 API는 나중에). 그래도 데모에서
-// "살아있는 데이터"처럼 보이도록, 고정 날짜 문자열 대신 TODAY 기준 상대값으로
-// 만들어서 언제 시연해도 D-day·경과시간이 어색하지 않게 했다.
+// 실제 배정 청년 두 명에 없는 지급 이력과, 화면 밀도를 위한 목 청년 30명을 구성한다.
+// 고정 날짜 문자열 대신 TODAY 기준 상대값으로 만들어 언제 시연해도 D-day가 자연스럽다.
 function daysAgoIso(days: number, hours = 0): string {
   const d = new Date(TODAY);
   d.setDate(d.getDate() - days);
@@ -20,7 +19,7 @@ function daysAgoDate(days: number): string {
 // ── 자립청년 목록 ────────────────────────────────────────────────
 // D-day는 "보호종료일 + 1825일 - 오늘"과 같은 방식으로 daysUntilSupportEnd를 직접 정해서
 // 시나리오별로 흩뿌렸다(여유/Д-365 임박/이미 초과 등). 실제 화면에서는 이 값을 그대로 쓴다.
-export const mockYouths: CounselorYouth[] = [
+const demoYouthProfiles: CounselorYouth[] = [
   {
     id: 1,
     name: '김도윤',
@@ -198,8 +197,8 @@ function monthLabel(monthsAgo: number): string {
 // youthId로 위 mockYouths와 연결해서, 상세를 열면 같은 청년의 정보를 그대로 보여줄 수 있게 했다.
 export const mockCareSignals: CareSignalRequest[] = [
   {
-    id: 101,
-    youthId: 3,
+    id: 100101,
+    youthId: 10003,
     requesterName: '박지훈',
     phone: '010-4471-9920',
     age: 24,
@@ -211,10 +210,11 @@ export const mockCareSignals: CareSignalRequest[] = [
     requestedAt: daysAgoIso(0, 2),
     contactedAt: null,
     closedAt: null,
+    source: 'MOCK',
   },
   {
-    id: 102,
-    youthId: 7,
+    id: 100102,
+    youthId: 10007,
     requesterName: '오태양',
     phone: '010-5528-6641',
     age: 23,
@@ -226,25 +226,27 @@ export const mockCareSignals: CareSignalRequest[] = [
     requestedAt: daysAgoIso(0, 6),
     contactedAt: null,
     closedAt: null,
+    source: 'MOCK',
   },
   {
-    id: 103,
-    youthId: 2,
-    requesterName: '이서윤',
-    phone: '010-9034-1182',
-    age: 22,
-    regionName: '인천광역시 미추홀구',
-    protectionStatus: 'ENDED',
+    id: 100103,
+    youthId: 10004,
+    requesterName: '최하은',
+    phone: '010-6602-3387',
+    age: 19,
+    regionName: '부산광역시 해운대구',
+    protectionStatus: 'IN_CARE',
     status: 'CONTACTED',
     aiRiskLevel: 'CARE',
     reason: 'D-365 진입 후 소비 패턴 급변(생활비 지출 62% 증가) 감지.',
     requestedAt: daysAgoIso(1, 3),
     contactedAt: daysAgoIso(0, 20),
     closedAt: null,
+    source: 'MOCK',
   },
   {
-    id: 104,
-    youthId: 9,
+    id: 100104,
+    youthId: 10009,
     requesterName: '서지안',
     phone: '010-1129-7743',
     age: 20,
@@ -256,10 +258,11 @@ export const mockCareSignals: CareSignalRequest[] = [
     requestedAt: daysAgoIso(2, 0),
     contactedAt: daysAgoIso(1, 5),
     closedAt: null,
+    source: 'MOCK',
   },
   {
-    id: 105,
-    youthId: 10,
+    id: 100105,
+    youthId: 10010,
     requesterName: '문가을',
     phone: '010-3357-8801',
     age: 21,
@@ -271,10 +274,11 @@ export const mockCareSignals: CareSignalRequest[] = [
     requestedAt: daysAgoIso(6, 0),
     contactedAt: daysAgoIso(5, 4),
     closedAt: daysAgoIso(3, 0),
+    source: 'MOCK',
   },
   {
-    id: 106,
-    youthId: 6,
+    id: 100106,
+    youthId: 10006,
     requesterName: '한소율',
     phone: '010-3390-8815',
     age: 21,
@@ -286,10 +290,11 @@ export const mockCareSignals: CareSignalRequest[] = [
     requestedAt: daysAgoIso(9, 0),
     contactedAt: daysAgoIso(8, 6),
     closedAt: daysAgoIso(8, 1),
+    source: 'MOCK',
   },
   {
-    id: 107,
-    youthId: 8,
+    id: 100107,
+    youthId: 10008,
     requesterName: '임수아',
     phone: '010-8843-2256',
     age: 26,
@@ -301,12 +306,13 @@ export const mockCareSignals: CareSignalRequest[] = [
     requestedAt: daysAgoIso(11, 0),
     contactedAt: null,
     closedAt: null,
+    source: 'MOCK',
   },
 ];
 
 // 케어 신호에서 참조하지만 mockYouths에 없는 두 명(서지안·문가을)도 목록에서 바로
 // 상세를 볼 수 있도록 채워둔다.
-mockYouths.push(
+demoYouthProfiles.push(
   {
     id: 9,
     name: '서지안',
@@ -351,8 +357,70 @@ mockYouths.push(
   }
 );
 
+const GENERATED_NAMES = [
+  '강유진', '고은찬', '권나연', '김시우', '남예린', '노준서', '문채원', '박건우',
+  '배하린', '서도현', '송지우', '신현우', '안서진', '양민호', '오하늘', '윤재희',
+  '이건우', '임다은', '장민서', '전우진', '정세은', '조현준',
+];
+
+const GENERATED_REGIONS = [
+  '서울특별시 강서구', '경기도 부천시 원미구', '인천광역시 남동구', '대전광역시 서구',
+  '광주광역시 광산구', '부산광역시 부산진구', '대구광역시 달서구', '울산광역시 남구',
+  '경기도 고양시 일산동구', '충청북도 청주시 흥덕구', '충청남도 천안시 서북구',
+  '전북특별자치도 전주시 완산구', '전라남도 순천시', '경상북도 포항시 북구',
+  '경상남도 김해시', '강원특별자치도 원주시', '제주특별자치도 제주시',
+];
+
+const curatedMockYouths = demoYouthProfiles.slice(2).map((youth) => ({
+  ...youth,
+  id: youth.id + 10000,
+}));
+
+const generatedMockYouths: CounselorYouth[] = GENERATED_NAMES.map((name, index) => {
+  const protectionStatus = index % 7 === 0 ? 'IN_CARE' : 'ENDED';
+  const daysSinceEnd = 280 + index * 73;
+  const riskLevel = index % 9 === 0 ? 'HUMAN_CARE' : index % 4 === 0 ? 'CARE' : 'NORMAL';
+  const allowancePaid = index % 6 !== 0;
+  return {
+    id: 10011 + index,
+    name,
+    phone: `010-${2100 + index * 137}-${4000 + index * 211}`,
+    age: 19 + (index % 8),
+    gender: index % 2 === 0 ? 'FEMALE' : 'MALE',
+    regionName: GENERATED_REGIONS[index % GENERATED_REGIONS.length],
+    protectionStatus,
+    protectionEndDate: protectionStatus === 'ENDED' ? daysAgoDate(daysSinceEnd) : null,
+    daysUntilSupportEnd: protectionStatus === 'ENDED' ? 1825 - daysSinceEnd : null,
+    settlementFundPaid: protectionStatus === 'ENDED' && index % 5 !== 0,
+    settlementFundPaidAt: protectionStatus === 'ENDED' && index % 5 !== 0
+      ? daysAgoDate(daysSinceEnd - 14)
+      : null,
+    settlementFundAmount: 15000000,
+    monthlyAllowances: protectionStatus === 'ENDED'
+      ? [2, 1, 0].map((monthsAgo) => ({
+          month: monthLabel(monthsAgo),
+          paid: allowancePaid || monthsAgo > 0,
+          paidAt: allowancePaid || monthsAgo > 0 ? daysAgoDate(3 + monthsAgo * 30) : null,
+          amount: 500000,
+        }))
+      : [],
+    riskLevel,
+    memo: riskLevel === 'HUMAN_CARE'
+      ? '최근 생활비 흐름에 이상징후가 있어 우선 확인이 필요합니다.'
+      : riskLevel === 'CARE'
+        ? '정기 확인 일정에 맞춰 생활 상황을 확인할 예정입니다.'
+        : '최근 확인 결과 특이사항이 없습니다.',
+  };
+});
+
+export const mockYouths: CounselorYouth[] = [...curatedMockYouths, ...generatedMockYouths];
+
+export function findConnectedYouthDemo(id: number): CounselorYouth | undefined {
+  return demoYouthProfiles.slice(0, 2).find((youth) => youth.id === id);
+}
+
 export function findYouth(id: number): CounselorYouth | undefined {
-  return mockYouths.find((y) => y.id === id);
+  return mockYouths.find((youth) => youth.id === id) ?? findConnectedYouthDemo(id);
 }
 
 export const COUNSELOR_DISPLAY_NAME = '김민지 상담사';
