@@ -47,9 +47,15 @@ export default function HomeScreen() {
         <Animated.View style={heroRise}>
           <HomeHeroCard isD365Mode={d365Mode} days={member?.daysUntilSupportEnd ?? undefined} />
         </Animated.View>
-        <Animated.View style={forecastRise}>
-          <SupportEndForecastCard />
-        </Animated.View>
+        {/* d365Mode로 감싸서 렌더링 자체를 건너뛴다. SupportEndForecastCard 내부에서만
+            null을 반환하면, 빈 Animated.View가 그대로 남아 있어 content의 gap이
+            위아래로 두 번(히어로→빈 래퍼, 빈 래퍼→자산 카드) 적용돼 일반 모드일 때
+            히어로 카드 아래 간격이 D-365 모드보다 두 배로 벌어진다. */}
+        {d365Mode ? (
+          <Animated.View style={forecastRise}>
+            <SupportEndForecastCard />
+          </Animated.View>
+        ) : null}
         <Animated.View style={assetRise}>
           <AssetSummaryCard />
         </Animated.View>
