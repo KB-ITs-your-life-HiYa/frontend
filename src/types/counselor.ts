@@ -1,7 +1,4 @@
-// 상담사(담당자) 포털 전용 타입. 지금은 전부 목업 데이터로 화면만 채우고,
-// 실제 상담사 기능(이상징후 스택 API, 메시지 발송 API 등)은 백엔드에서 나중에 만든다.
-// 그래서 여기 타입들은 백엔드 응답 모양이 아니라, 화면에 필요한 모양으로 자유롭게 정의했다.
-// 나중에 API가 생기면 이 타입들을 실제 응답 DTO에 맞춰 바꾸면 된다.
+// 상담사 포털 화면 타입과 백엔드 응답 타입.
 
 /** 보호 상태. 백엔드 Member.protectionStatus 와 같은 값(IN_CARE=보호중, ENDED=보호종료) */
 export type ProtectionStatusValue = 'IN_CARE' | 'ENDED';
@@ -45,7 +42,7 @@ export interface CounselorYouth {
   name: string;
   phone: string;
   age: number;
-  gender: 'MALE' | 'FEMALE';
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
   regionName: string; // 거주 지역(시/군/구까지)
   protectionStatus: ProtectionStatusValue;
   protectionEndDate: string | null; // YYYY-MM-DD. 보호중이면 null
@@ -70,7 +67,44 @@ export interface CareSignalRequest {
   status: CareRequestStatus;
   aiRiskLevel: AiRiskLevel;
   reason: string; // 담당자 연계 요청 사유
+  situation?: string;
+  latestUserMessage?: string | null;
   requestedAt: string; // ISO. 요청 발생 일시
+  contactedAt: string | null;
+  closedAt: string | null;
+  source: 'API' | 'MOCK';
+}
+
+/** GET /members/me/counselor/youths 응답 */
+export interface CounselorYouthApiResponse {
+  id: number;
+  name: string;
+  phone: string;
+  age: number;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  regionName: string;
+  protectionStatus: ProtectionStatusValue;
+  protectionEndDate: string | null;
+  daysUntilSupportEnd: number | null;
+  assignedAt: string;
+}
+
+/** GET /members/me/counselor/referrals 응답 */
+export interface CounselorReferralApiResponse {
+  id: number;
+  youthId: number;
+  youthName: string;
+  phone: string;
+  age: number;
+  regionName: string;
+  protectionStatus: ProtectionStatusValue;
+  status: CareRequestStatus;
+  riskScore: number;
+  riskLevel: AiRiskLevel;
+  signalType: string;
+  situation: string;
+  latestUserMessage: string | null;
+  requestedAt: string;
   contactedAt: string | null;
   closedAt: string | null;
 }
