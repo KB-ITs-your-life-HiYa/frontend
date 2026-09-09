@@ -43,7 +43,7 @@ export default function SettlementFundModal({ visible, onClose }: Props) {
       <View style={styles.fundBox}>
         <View style={styles.fundLeft}>
           <Text style={styles.fundLabel}>예상 자립정착금</Text>
-          <MoneyText amount={settlementAmount} variant="large" color={colors.white} />
+          <MoneyText amount={settlementAmount} variant="large" color={colors.white} animate={false} />
         </View>
         <View style={styles.regionBadge}>
           <Text style={styles.regionBadgeText}>{sidoName}</Text>
