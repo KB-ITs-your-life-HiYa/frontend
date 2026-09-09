@@ -14,8 +14,7 @@ import {
 
 // 온라인 케어 시스템 · 이상징후 스택. AI가 감지해서 담당자 연계를 요청한 건들을
 // 큐(스택)처럼 쌓아두고, 담당자가 위에서부터 훑으며 전화하기 / 상담 시작 / 종결로
-// 처리한다. 상태 전환은 지금은 화면 안 로컬 상태만 바꾼다 — 실제 저장은 백엔드
-// API가 생기면 여기 onUpdateStatus 안에서 API 호출로 바꾸면 된다.
+// 처리한다. API에서 받은 요청은 현재 상황과 청년의 최근 답변을 함께 보여준다.
 
 const FILTERS: { key: 'ALL' | CareRequestStatus; label: string }[] = [
   { key: 'ALL', label: '전체' },
@@ -98,14 +97,20 @@ export default function CounselorCareSection({ signals, onUpdateStatus }: Props)
 function CareSignalCard({ signal, onUpdateStatus }: { signal: CareSignalRequest; onUpdateStatus: Props['onUpdateStatus'] }) {
   const statusMeta = CARE_REQUEST_STATUS_META[signal.status];
   const riskMeta = RISK_LEVEL_META[signal.aiRiskLevel];
-  const canStartCare = signal.status === 'REQUESTED';
-  const canClose = signal.status === 'REQUESTED' || signal.status === 'CONTACTED';
+  const canStartCare = signal.source === 'MOCK' && signal.status === 'REQUESTED';
+  const canClose = signal.source === 'MOCK' && (signal.status === 'REQUESTED' || signal.status === 'CONTACTED');
 
   return (
     <Card style={styles.signalCard}>
       <View style={styles.signalHeader}>
         <View style={styles.signalHeaderLeft}>
           <Text style={styles.requesterName}>{signal.requesterName}</Text>
+          {signal.source === 'API' ? (
+            <View style={[styles.badge, styles.connectedBadge]}>
+              <Ionicons name="sync" size={11} color={colors.primary} />
+              <Text style={[styles.badgeText, { color: colors.primary }]}>실시간 전달</Text>
+            </View>
+          ) : null}
           <View style={[styles.badge, { backgroundColor: statusMeta.bg }]}>
             <Text style={[styles.badgeText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
           </View>
@@ -128,9 +133,16 @@ function CareSignalCard({ signal, onUpdateStatus }: { signal: CareSignalRequest;
       </View>
 
       <View style={styles.reasonBox}>
-        <Text style={styles.reasonLabel}>담당자 연계 요청 사유</Text>
-        <Text style={styles.reasonText}>{signal.reason}</Text>
+        <Text style={styles.reasonLabel}>{signal.source === 'API' ? '감지된 현재 상황' : '담당자 연계 요청 사유'}</Text>
+        <Text style={styles.reasonText}>{signal.situation ?? signal.reason}</Text>
       </View>
+
+      {signal.latestUserMessage ? (
+        <View style={styles.messageBox}>
+          <Text style={styles.reasonLabel}>청년의 최근 답변</Text>
+          <Text style={styles.messageText}>“{signal.latestUserMessage}”</Text>
+        </View>
+      ) : null}
 
       <View style={styles.actionRow}>
         <PressableScale
@@ -141,23 +153,27 @@ function CareSignalCard({ signal, onUpdateStatus }: { signal: CareSignalRequest;
           <Text style={styles.actionTextLight}>전화하기</Text>
         </PressableScale>
 
-        <PressableScale
-          style={[styles.actionButton, canStartCare ? styles.startButton : styles.actionDisabled]}
-          disabled={!canStartCare}
-          onPress={() => onUpdateStatus(signal.id, 'CONTACTED')}
-        >
-          <Ionicons name="chatbubbles-outline" size={14} color={canStartCare ? colors.primary : colors.textTertiary} />
-          <Text style={[styles.actionTextDark, !canStartCare && styles.actionTextMuted]}>상담 시작</Text>
-        </PressableScale>
+        {signal.source === 'MOCK' ? (
+          <>
+            <PressableScale
+              style={[styles.actionButton, canStartCare ? styles.startButton : styles.actionDisabled]}
+              disabled={!canStartCare}
+              onPress={() => onUpdateStatus(signal.id, 'CONTACTED')}
+            >
+              <Ionicons name="chatbubbles-outline" size={14} color={canStartCare ? colors.primary : colors.textTertiary} />
+              <Text style={[styles.actionTextDark, !canStartCare && styles.actionTextMuted]}>상담 시작</Text>
+            </PressableScale>
 
-        <PressableScale
-          style={[styles.actionButton, canClose ? styles.closeButton : styles.actionDisabled]}
-          disabled={!canClose}
-          onPress={() => onUpdateStatus(signal.id, 'CLOSED')}
-        >
-          <Ionicons name="checkmark-done-outline" size={14} color={canClose ? colors.success : colors.textTertiary} />
-          <Text style={[styles.actionTextDark, !canClose && styles.actionTextMuted, canClose && { color: colors.success }]}>종결</Text>
-        </PressableScale>
+            <PressableScale
+              style={[styles.actionButton, canClose ? styles.closeButton : styles.actionDisabled]}
+              disabled={!canClose}
+              onPress={() => onUpdateStatus(signal.id, 'CLOSED')}
+            >
+              <Ionicons name="checkmark-done-outline" size={14} color={canClose ? colors.success : colors.textTertiary} />
+              <Text style={[styles.actionTextDark, !canClose && styles.actionTextMuted, canClose && { color: colors.success }]}>종결</Text>
+            </PressableScale>
+          </>
+        ) : null}
       </View>
     </Card>
   );
@@ -203,6 +219,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   badgeText: { fontSize: 11, fontWeight: '700' },
+  connectedBadge: { backgroundColor: colors.primaryLight },
   elapsedCol: { alignItems: 'flex-end' },
   elapsedText: { fontSize: 12, fontWeight: '800', color: colors.danger },
   requestedAtText: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
@@ -221,6 +238,14 @@ const styles = StyleSheet.create({
   reasonBox: { backgroundColor: colors.background, borderRadius: radius.sm, padding: spacing.sm, gap: 2 },
   reasonLabel: { fontSize: 11, color: colors.textTertiary, fontWeight: '700' },
   reasonText: { fontSize: 13, color: colors.textPrimary, lineHeight: 18 },
+  messageBox: {
+    gap: 5,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+  },
+  messageText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, lineHeight: 19 },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionButton: {
     flex: 1,
